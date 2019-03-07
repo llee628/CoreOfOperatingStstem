@@ -26,6 +26,11 @@ ldt_desc:
     .word KERNEL_LDT
     .long ldt
 
+    .word 0 # Padding
+gdt_desc:
+    .word 64
+    .long gdt
+
     .align 4
 tss:
 _tss:
