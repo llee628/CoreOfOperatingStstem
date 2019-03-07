@@ -1,6 +1,7 @@
 #include "tests.h"
 #include "x86_desc.h"
 #include "lib.h"
+#include "idt.h"
 
 #define PASS 1
 #define FAIL 0
@@ -21,7 +22,7 @@ static inline void assertion_failure(){
 /* Checkpoint 1 tests */
 
 /* IDT Test - Example
- * 
+ *
  * Asserts that first 10 IDT entries are not NULL
  * Inputs: None
  * Outputs: PASS/FAIL
@@ -35,17 +36,36 @@ int idt_test(){
 	int i;
 	int result = PASS;
 	for (i = 0; i < 10; ++i){
-		if ((idt[i].offset_15_00 == NULL) && 
+		if ((idt[i].offset_15_00 == NULL) &&
 			(idt[i].offset_31_16 == NULL)){
 			assertion_failure();
 			result = FAIL;
 		}
 	}
 
+	if ((idt[SYSCALL_IDX].offset_15_00 == NULL) &&
+		(idt[SYSCALL_IDX].offset_31_16 == NULL)){
+		assertion_failure();
+		result = FAIL;
+	}
+
 	return result;
 }
 
-// add more tests here
+/* Function: test_dvb;
+ * Inputs: none
+ * Return Value: FAIL if exception was not thrown
+ * Function: Checks if Divide by Zero exception is properly initialized in IDT
+ */
+int test_dvb(){
+	TEST_HEADER;
+	int i = 10, k = 0;
+	printf("Testing Divide by Zero exception \n");
+	i = i / k;
+	assertion_failure();
+	return FAIL;
+}
+
 
 /* Checkpoint 2 tests */
 /* Checkpoint 3 tests */
@@ -57,4 +77,5 @@ int idt_test(){
 void launch_tests(){
 	TEST_OUTPUT("idt_test", idt_test());
 	// launch your tests here
+	//TEST_OUTPUT("test_dvb", test_dvb());
 }

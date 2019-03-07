@@ -154,10 +154,10 @@ typedef union idt_desc_t {
         uint32_t reserved3 : 1;
         uint32_t reserved2 : 1;
         uint32_t reserved1 : 1;
-        uint32_t size      : 1;
+        uint32_t size      : 1;                           // labelled as D in the manual
         uint32_t reserved0 : 1;
         uint32_t dpl       : 2;
-        uint32_t present   : 1;
+        uint32_t present   : 1;                           // labelled as P in the manual
         uint16_t offset_31_16;
     } __attribute__ ((packed));
 } idt_desc_t;
