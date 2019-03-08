@@ -4,7 +4,6 @@
 #include "x86_desc.h"
 #include "lib.h"
 #include "i8259.h"
-extern void interrupt_handler(void);
 
 void init_rtc(void) {
 	char prev;
@@ -23,15 +22,17 @@ void init_rtc(void) {
 	outb((prev & 0xF0) | RTC_RATE, 0x71); //write only our rate to A. Note, rate is the bottom 4 bits.
 
 	// Set interrupt handler
-	SET_IDT_ENTRY(idt[0x28], rtc_isr);
+	SET_IDT_ENTRY(idt[0x28], _rtc_isr);
 	idt[0x28].present = 1;
 
 	// Enable IRQs
 	enable_irq(RTC_IRQ);
+	enable_irq(SLAVE_PIC_IRQ);
 	sti();
 }
 
 void rtc_isr(void) {
-	printf("\x1b""10RTC!\x1b""70\n");
 	test_interrupts();
+	outb(0x0C, 0x70);
+	(void) inb(0x71);
 }
