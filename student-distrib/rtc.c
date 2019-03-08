@@ -22,8 +22,8 @@ void init_rtc(void) {
 	outb((prev & 0xF0) | RTC_RATE, 0x71); //write only our rate to A. Note, rate is the bottom 4 bits.
 
 	// Set interrupt handler
-	SET_IDT_ENTRY(idt[0x28], _rtc_isr);
-	idt[0x28].present = 1;
+	SET_IDT_ENTRY(idt[RTC_INT], _rtc_isr);
+	idt[RTC_INT].present = 1;
 
 	// Enable IRQs
 	enable_irq(RTC_IRQ);

@@ -10,6 +10,7 @@
 #include "debug.h"
 #include "tests.h"
 #include "rtc.h"
+#include "kb.h"
 
 #define RUN_TESTS
 
@@ -143,7 +144,8 @@ void entry(unsigned long magic, unsigned long addr) {
 
     /* Init the PIC */
     i8259_init();
-	init_rtc();
+	/* init_rtc(); */
+	init_kb();
 
     /* Initialize devices, memory, filesystem, enable device interrupts on the
      * PIC, any other initialization stuff... */
