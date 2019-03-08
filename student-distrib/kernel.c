@@ -9,6 +9,7 @@
 #include "idt.h"
 #include "debug.h"
 #include "tests.h"
+#include "rtc.h"
 
 #define RUN_TESTS
 
@@ -139,6 +140,7 @@ void entry(unsigned long magic, unsigned long addr) {
 
     /* Init the IDT */
     idt_init();
+	init_rtc();
 
     /* Init the PIC */
     i8259_init();
@@ -160,5 +162,11 @@ void entry(unsigned long magic, unsigned long addr) {
     /* Execute the first program ("shell") ... */
 
     /* Spin (nicely, so we don't chew up cycles) */
+	int i;
+	for (i = 0; i < 7; i ++) {
+		printf("\x1b%d0test\n", i);
+	}
+	printf("\x1b70");
+
     asm volatile (".1: hlt; jmp .1;");
 }
