@@ -141,11 +141,12 @@ void entry(unsigned long magic, unsigned long addr) {
 
     /* Init the IDT */
     idt_init();
-
+    /* Init Paging */
+    init_page();
     /* Init the PIC */
     i8259_init();
 	/* init_rtc(); */
-	init_kb();
+	  init_kb();
 
     /* Initialize devices, memory, filesystem, enable device interrupts on the
      * PIC, any other initialization stuff... */
