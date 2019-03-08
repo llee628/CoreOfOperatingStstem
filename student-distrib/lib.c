@@ -171,27 +171,27 @@ void putc(uint8_t c) {
 	static uint8_t state = 0;
 	static uint8_t attr = ATTRIB;
 	if (c == '\x1b') {
-		state = 1;
-		return;
-	}
-	if (state == 1 || state == 2) {
-		if (c >= '0' && c <= '9') {
-			c -= '0';
-		} else if (c >= 'A' && c <= 'F') {
-			c -= 'A';
-			c += 10;
-		} else if (c >= 'a' && c <= 'f') {
-			c -= 'a';
-			c += 10;
-		}
-		if (state == 1) {
-			attr = (attr & 0xF0) | (c & 0x0F);
-			state ++;
-		} else if (state == 2) {
-			attr = (attr & 0x0F) | (c & 0xF0);
-			state = 0;
-		}
-		return;
+  		state = 1;
+  		return;
+  }
+  	if (state == 1 || state == 2) {
+  		if (c >= '0' && c <= '9') {
+  			c -= '0';
+  		} else if (c >= 'A' && c <= 'F') {
+  			c -= 'A';
+  			c += 10;
+  		} else if (c >= 'a' && c <= 'f') {
+  			c -= 'a';
+  			c += 10;
+  		}
+  		if (state == 1) {
+  			attr = (attr & 0xF0) | (c & 0x0F);
+  			state ++;
+  		} else if (state == 2) {
+  			attr = (attr & 0x0F) | (c & 0xF0);
+  			state = 0;
+  		}
+  		return;
 	}
     if(c == '\n' || c == '\r') {
         screen_y++;
