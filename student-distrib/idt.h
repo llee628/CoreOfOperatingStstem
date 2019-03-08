@@ -35,4 +35,9 @@ void syscall_temp(void);
 /* initializes the idt array */
 extern void idt_init(void);
 
+// Interrupt indexes
+#define KB_INT			0x21
+#define SLAVE_PIC_INT	0x22
+#define RTC_INT 		0x28
+
 #endif

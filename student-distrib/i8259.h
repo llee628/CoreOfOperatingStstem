@@ -29,6 +29,11 @@
  * to declare the interrupt finished */
 #define EOI                 0x60
 
+// IRQ numbers
+#define KB_IRQ			1
+#define SLAVE_PIC_IRQ 	2
+#define RTC_IRQ 		8
+
 /* Externally-visible functions */
 
 /* Initialize both PICs */
