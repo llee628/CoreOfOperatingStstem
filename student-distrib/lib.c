@@ -168,12 +168,37 @@ int32_t puts(int8_t* s) {
  * Return Value: void
  *  Function: Output a character to the console */
 void putc(uint8_t c) {
+	static uint8_t state = 0;
+	static uint8_t attr = ATTRIB;
+	if (c == '\x1b') {
+		state = 1;
+		return;
+	}
+	if (state == 1 || state == 2) {
+		if (c >= '0' && c <= '9') {
+			c -= '0';
+		} else if (c >= 'A' && c <= 'F') {
+			c -= 'A';
+			c += 10;
+		} else if (c >= 'a' && c <= 'f') {
+			c -= 'a';
+			c += 10;
+		}
+		if (state == 1) {
+			attr = (attr & 0xF0) | (c & 0x0F);
+			state ++;
+		} else if (state == 2) {
+			attr = (attr & 0x0F) | (c & 0xF0);
+			state = 0;
+		}
+		return;
+	}
     if(c == '\n' || c == '\r') {
         screen_y++;
         screen_x = 0;
     } else {
         *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1)) = c;
-        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1) + 1) = ATTRIB;
+        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1) + 1) = attr;
         screen_x++;
         screen_x %= NUM_COLS;
         screen_y = (screen_y + (screen_x / NUM_COLS)) % NUM_ROWS;
