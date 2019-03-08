@@ -41,6 +41,7 @@ void mf(void){ general_exceptions_handler("X87 FPU FLOATING-POINT ERROR"); }
 void ac(void){ general_exceptions_handler("ALIGNMENT CHECK"); }
 void mc(void){ general_exceptions_handler("MACHINE CHECK"); }
 void xf(void){ general_exceptions_handler("SIMD FLOATING-POINT EXCEPTION"); }
+void unreachable(void){ general_exceptions_handler("\x1b""30UNREACHABLE!!!\x1b""70"); }
 
 /* temp function just to see if the index at 0x80 can be set*/
 void syscall_temp(void){ printf("In syscall_temp\n"); }

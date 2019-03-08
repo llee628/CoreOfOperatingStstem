@@ -4,6 +4,7 @@
 #include "x86_desc.h"
 #include "lib.h"
 #include "i8259.h"
+extern void interrupt_handler(void);
 
 void init_rtc(void) {
 	char prev;
@@ -31,5 +32,6 @@ void init_rtc(void) {
 }
 
 void rtc_isr(void) {
+	printf("\x1b""10RTC!\x1b""70\n");
 	test_interrupts();
 }

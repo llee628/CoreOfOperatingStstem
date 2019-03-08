@@ -5,7 +5,11 @@
 // 2 < rate < 15
 #define RTC_RATE 6
 
+#ifndef ASM
+
 void rtc_isr(void);
 void init_rtc(void);
+
+#endif
 
 #endif

@@ -3,6 +3,13 @@
 
 #define SYSCALL_IDX     0x80
 
+// Interrupt indexes
+#define KB_INT			0x21
+#define SLAVE_PIC_INT	0x22
+#define RTC_INT 		0x28
+
+#ifndef ASM
+
 /* Prints out the exception type that was thrown */
 void general_exceptions_handler(char* exception);
 
@@ -29,15 +36,13 @@ void mf(void);
 void ac(void);
 void mc(void);
 void xf(void);
+void unreachable(void);
 
 void syscall_temp(void);
 
 /* initializes the idt array */
 extern void idt_init(void);
 
-// Interrupt indexes
-#define KB_INT			0x21
-#define SLAVE_PIC_INT	0x22
-#define RTC_INT 		0x28
+#endif /* ASM */
 
 #endif

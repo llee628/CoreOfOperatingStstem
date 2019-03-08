@@ -140,10 +140,10 @@ void entry(unsigned long magic, unsigned long addr) {
 
     /* Init the IDT */
     idt_init();
-	init_rtc();
 
     /* Init the PIC */
     i8259_init();
+	init_rtc();
 
     /* Initialize devices, memory, filesystem, enable device interrupts on the
      * PIC, any other initialization stuff... */
@@ -166,7 +166,7 @@ void entry(unsigned long magic, unsigned long addr) {
 	for (i = 0; i < 7; i ++) {
 		printf("\x1b%d0test\n", i);
 	}
-	printf("\x1b70");
+	printf("\x1b""70");
 
     asm volatile (".1: hlt; jmp .1;");
 }
