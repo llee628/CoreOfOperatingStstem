@@ -66,6 +66,74 @@ int test_dvb(){
 	return FAIL;
 }
 
+/* Function: test_dvb;
+ * Inputs: none
+ * Return Value: FAIL if exception was not thrown
+ * Function: Checks if Divide by Zero exception is properly initialized in IDT
+ */
+int test_deref_null(){
+	TEST_HEADER;
+	int k;
+	int* i = NULL;
+	printf("Testing Page Fault exception \n");
+	k = *i;
+	assertion_failure();
+	return FAIL;
+}
+
+int test_deref_below_vid_mem(){
+	int k;
+	int* i = (int*)(0xB8000 - 1);
+	printf("Testing deref below vid_mem\n");
+	k = *i;
+	assertion_failure();
+	return FAIL;
+}
+
+int test_deref_vid_mem(){
+	int k;
+	int* i = (int*)(0xB8000);
+	printf("Testing deref vid_mem\n");
+	k = *i;
+	//assertion_failure();
+	return PASS;
+}
+
+int test_deref_above_vid_mem(){
+	int k;
+	int* i = (int*)(0xB8000 + 0x4000 + 1);
+	printf("Testing deref above vid_mem\n");
+	k = *i;
+	assertion_failure();
+	return FAIL;
+}
+
+int test_deref_below_kernel(){
+	int k;
+	int* i = (int*)(0x400000 - 1);
+	printf("Testing deref below kernel\n");
+	k = *i;
+	assertion_failure();
+	return FAIL;
+}
+
+int test_deref_kernel(){
+	int k;
+	int* i = (int*)(0x400000);
+	printf("Testing deref kernel\n");
+	k = *i;
+	//assertion_failure();
+	return PASS;
+}
+
+int test_deref_above_kernel(){
+	int k;
+	int* i = (int*)(0x800000 + 0x4000 + 1);
+	printf("Testing deref above kernel\n");
+	k = *i;
+	assertion_failure();
+	return FAIL;
+}
 
 /* Checkpoint 2 tests */
 /* Checkpoint 3 tests */
@@ -75,7 +143,14 @@ int test_dvb(){
 
 /* Test suite entry point */
 void launch_tests(){
-	TEST_OUTPUT("idt_test", idt_test());
+	//TEST_OUTPUT("idt_test", idt_test());
 	// launch your tests here
-	//TEST_OUTPUT("test_dvb", test_dvb());
+  TEST_OUTPUT("test_dvb", test_dvb());
+	//TEST_OUTPUT("test_deref_null", test_deref_null());
+	//TEST_OUTPUT("test_deref_below_vid_mem", test_deref_below_vid_mem());
+	//TEST_OUTPUT("test_deref_vid_mem", test_deref_vid_mem());
+	//TEST_OUTPUT("test_deref_above_vid_mem", test_deref_above_vid_mem());
+	//TEST_OUTPUT("test_deref_below_kernel", test_deref_below_kernel());
+	//TEST_OUTPUT("test_deref_kernel", test_deref_kernel());
+	//TEST_OUTPUT("test_deref_above_kernel", test_deref_above_kernel());
 }

@@ -146,7 +146,9 @@ void entry(unsigned long magic, unsigned long addr) {
     init_page();
     /* Init the PIC */
     i8259_init();
-	/* init_rtc(); */
+    /* Init the RTC */
+	  //init_rtc();
+    /* Init the keyboard */
 	  init_kb();
 
     /* Initialize devices, memory, filesystem, enable device interrupts on the
@@ -161,7 +163,7 @@ void entry(unsigned long magic, unsigned long addr) {
 
 #ifdef RUN_TESTS
     /* Run tests */
-    /* launch_tests(); */
+    launch_tests();
 #endif
     /* Execute the first program ("shell") ... */
 
