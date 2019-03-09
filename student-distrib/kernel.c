@@ -9,6 +9,8 @@
 #include "idt.h"
 #include "debug.h"
 #include "tests.h"
+#include "rtc.h"
+#include "kb.h"
 
 #define RUN_TESTS
 
@@ -139,9 +141,12 @@ void entry(unsigned long magic, unsigned long addr) {
 
     /* Init the IDT */
     idt_init();
-
+    /* Init Paging */
+    init_page();
     /* Init the PIC */
     i8259_init();
+	/* init_rtc(); */
+	  init_kb();
 
     /* Initialize devices, memory, filesystem, enable device interrupts on the
      * PIC, any other initialization stuff... */
@@ -155,10 +160,16 @@ void entry(unsigned long magic, unsigned long addr) {
 
 #ifdef RUN_TESTS
     /* Run tests */
-    launch_tests();
+    /* launch_tests(); */
 #endif
     /* Execute the first program ("shell") ... */
 
     /* Spin (nicely, so we don't chew up cycles) */
+	int i;
+	for (i = 0; i < 16; i ++) {
+		printf("\x1b%x0%d", i, i);
+	}
+	putc('\n');
+
     asm volatile (".1: hlt; jmp .1;");
 }
