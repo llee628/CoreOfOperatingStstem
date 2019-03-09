@@ -214,6 +214,8 @@ void scroll(void) {
 	int x, y;
 	for (y = 0; y < NUM_ROWS - 1; y ++) {
 		for (x = 0; x < NUM_COLS; x ++) {
+			// We want to copy the attributes as well
+			setattr(video_mem[((NUM_COLS * (y + 1) + x) << 1) + 1]);
 			set_vid_char(x, y, get_vid_char(x, y + 1));
 		}
 	}
@@ -263,6 +265,7 @@ void putc(uint8_t c) {
   		}
   		return;
 	}
+	state = 0;
 
 	switch (c) {
 		case '\n':

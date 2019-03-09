@@ -161,20 +161,17 @@ void entry(unsigned long magic, unsigned long addr) {
     /*printf("Enabling Interrupts\n");
     sti();*/
 
-#ifdef RUN_TESTS
-    /* Run tests */
-    launch_tests();
-#endif
-    /* Execute the first program ("shell") ... */
-
 	int i;
 	for (i = 0; i < 16; i ++) {
 		printf("\x1b%x0%d", i, i);
 	}
 	putc('\n');
 
-	char *s = 0;
-	char c = *s;
+#ifdef RUN_TESTS
+    /* Run tests */
+    launch_tests();
+#endif
+    /* Execute the first program ("shell") ... */
 
     /* Spin (nicely, so we don't chew up cycles) */
     asm volatile (".1: hlt; jmp .1;");
