@@ -147,9 +147,9 @@ void entry(unsigned long magic, unsigned long addr) {
     /* Init the PIC */
     i8259_init();
     /* Init the RTC */
-	  //init_rtc();
+	/* init_rtc(); */
     /* Init the keyboard */
-	  init_kb();
+	init_kb();
 
     /* Initialize devices, memory, filesystem, enable device interrupts on the
      * PIC, any other initialization stuff... */
@@ -167,12 +167,15 @@ void entry(unsigned long magic, unsigned long addr) {
 #endif
     /* Execute the first program ("shell") ... */
 
-    /* Spin (nicely, so we don't chew up cycles) */
 	int i;
 	for (i = 0; i < 16; i ++) {
 		printf("\x1b%x0%d", i, i);
 	}
 	putc('\n');
 
+	char *s = 0;
+	char c = *s;
+
+    /* Spin (nicely, so we don't chew up cycles) */
     asm volatile (".1: hlt; jmp .1;");
 }

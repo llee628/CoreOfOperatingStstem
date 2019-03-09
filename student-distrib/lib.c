@@ -4,11 +4,6 @@
 
 #include "lib.h"
 
-#define VIDEO       0xB8000
-#define NUM_COLS    80
-#define NUM_ROWS    25
-#define ATTRIB      0x0F
-
 static int screen_x;
 static int screen_y;
 static char* video_mem = (char *)VIDEO;
@@ -18,12 +13,33 @@ static uint8_t attr = ATTRIB;
  * Inputs: void
  * Return Value: none
  * Function: Clears video memory */
-void clear(void) {
+void clear() {
     int32_t i;
     for (i = 0; i < NUM_ROWS * NUM_COLS; i++) {
         *(uint8_t *)(video_mem + (i << 1)) = ' ';
-        *(uint8_t *)(video_mem + (i << 1) + 1) = ATTRIB;
+        *(uint8_t *)(video_mem + (i << 1) + 1) = attr;
     }
+}
+
+/* void setpos(int x, int y);
+ * Inputs: int x, y: position of cursor to set to
+ * Return Value: void
+ *  Function: Set the cursor position */
+void setpos(int x, int y) {
+	if (x < 0 || x >= NUM_COLS || y < 0 || y >= NUM_ROWS) {
+		return;
+	}
+
+	screen_x = x;
+	screen_y = y;
+}
+
+/* void setattr(uint8_t _attr);
+ * Inputs: uint_8 _attr: Attribute to set
+ * Return Value: void
+ *  Function: Set the attribute of following prints to _attr */
+void setattr(uint8_t _attr) {
+	attr = _attr;
 }
 
 /* Standard printf().
@@ -155,7 +171,7 @@ format_char_switch:
 /* int32_t puts(int8_t* s);
  *   Inputs: int_8* s = pointer to a string of characters
  *   Return Value: Number of bytes written
- *    Function: Output a string to the console */
+ *   Function: Output a string to the console */
 int32_t puts(int8_t* s) {
     register int32_t index = 0;
     while (s[index] != '\0') {
@@ -165,27 +181,51 @@ int32_t puts(int8_t* s) {
     return index;
 }
 
-uint8_t get_vid_char(int r, int c) {
-	return video_mem[(NUM_COLS * r + c) << 1];
+/* void get_vid_char(int x, int y);
+ * Inputs: int x, y: position of character to get
+ * Return Value: void
+ *  Function: get a character located at the input positions */
+uint8_t get_vid_char(int x, int y) {
+	if (x < 0 || x >= NUM_COLS || y < 0 || y >= NUM_ROWS) {
+		return 0;
+	}
+
+	return video_mem[(NUM_COLS * y + x) << 1];
 }
 
-void set_vid_char(int r, int c, uint8_t ch) {
-	video_mem[(NUM_COLS * r + c) << 1] = ch;
-	video_mem[((NUM_COLS * r + c) << 1) + 1] = attr;
+/* void set_vid_char(int x, int y);
+ * Inputs: int x, y: position of character to set
+ * Return Value: void
+ *  Function: set a character located at the input positions */
+void set_vid_char(int x, int y, uint8_t ch) {
+	if (x < 0 || x >= NUM_COLS || y < 0 || y >= NUM_ROWS) {
+		return;
+	}
+
+	video_mem[(NUM_COLS * y + x) << 1] = ch;
+	video_mem[((NUM_COLS * y + x) << 1) + 1] = attr;
 }
 
+/* void putc(uint8_t c);
+ * Inputs: uint_8* c = character to print
+ * Return Value: void
+ *  Function: Output a character to the console */
 void scroll(void) {
-	int r, c;
-	for (r = 0; r < NUM_ROWS - 1; r ++) {
-		for (c = 0; c < NUM_COLS; c ++) {
-			set_vid_char(r, c, get_vid_char(r + 1, c));
+	int x, y;
+	for (y = 0; y < NUM_ROWS - 1; y ++) {
+		for (x = 0; x < NUM_COLS; x ++) {
+			set_vid_char(x, y, get_vid_char(x, y + 1));
 		}
 	}
-	for (c = 0; c < NUM_COLS; c ++) {
-		set_vid_char(NUM_ROWS - 1, c, ' ');
+	for (x = 0; x < NUM_COLS; x ++) {
+		set_vid_char(x, NUM_ROWS - 1, ' ');
 	}
 }
 
+/* void putc(uint8_t c);
+ * Inputs: uint_8* c = character to print
+ * Return Value: void
+ *  Function: Output a character to the console */
 void back(void) {
 	screen_x --;
 	if (screen_x < 0) {
@@ -240,11 +280,11 @@ void putc(uint8_t c) {
 
 		case '\b':
 			back();
-			set_vid_char(screen_y, screen_x, ' ');
+			set_vid_char(screen_x, screen_y, ' ');
 			break;
 
 		default:
-			set_vid_char(screen_y, screen_x, c);
+			set_vid_char(screen_x, screen_y, c);
 			screen_x++;
 			if (screen_x >= NUM_COLS) {
 				screen_x -= NUM_COLS;
@@ -411,7 +451,7 @@ void* memset_dword(void* s, int32_t c, uint32_t n) {
 
 /* void* memcpy(void* dest, const void* src, uint32_t n);
  * Inputs:      void* dest = destination of copy
- *         const void* src = source of copy
+ *              const void* src = source of copy
  *              uint32_t n = number of byets to copy
  * Return Value: pointer to dest
  * Function: copy n bytes of src to dest */
