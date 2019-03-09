@@ -1,16 +1,18 @@
 /* lib.c - Some basic library functions (printf, strlen, etc.)
- * vim:ts=4 noexpandtab */
+ * vim:ts=4 noexpandtab
+ */
 
 #include "lib.h"
 
 #define VIDEO       0xB8000
 #define NUM_COLS    80
 #define NUM_ROWS    25
-#define ATTRIB      0x7
+#define ATTRIB      0x0F
 
 static int screen_x;
 static int screen_y;
 static char* video_mem = (char *)VIDEO;
+static uint8_t attr = ATTRIB;
 
 /* void clear(void);
  * Inputs: void
@@ -163,17 +165,45 @@ int32_t puts(int8_t* s) {
     return index;
 }
 
+uint8_t get_vid_char(int r, int c) {
+	return video_mem[(NUM_COLS * r + c) << 1];
+}
+
+void set_vid_char(int r, int c, uint8_t ch) {
+	video_mem[(NUM_COLS * r + c) << 1] = ch;
+	video_mem[((NUM_COLS * r + c) << 1) + 1] = attr;
+}
+
+void scroll(void) {
+	int r, c;
+	for (r = 0; r < NUM_ROWS - 1; r ++) {
+		for (c = 0; c < NUM_COLS; c ++) {
+			set_vid_char(r, c, get_vid_char(r + 1, c));
+		}
+	}
+	for (c = 0; c < NUM_COLS; c ++) {
+		set_vid_char(NUM_ROWS - 1, c, ' ');
+	}
+}
+
+void back(void) {
+	screen_x --;
+	if (screen_x < 0) {
+		screen_x += NUM_COLS;
+		screen_y --;
+	}
+}
+
 /* void putc(uint8_t c);
  * Inputs: uint_8* c = character to print
  * Return Value: void
  *  Function: Output a character to the console */
 void putc(uint8_t c) {
 	static uint8_t state = 0;
-	static uint8_t attr = ATTRIB;
 	if (c == '\x1b') {
   		state = 1;
   		return;
-  }
+    }
   	if (state == 1 || state == 2) {
   		if (c >= '0' && c <= '9') {
   			c -= '0';
@@ -193,16 +223,39 @@ void putc(uint8_t c) {
   		}
   		return;
 	}
-    if(c == '\n' || c == '\r') {
-        screen_y++;
-        screen_x = 0;
-    } else {
-        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1)) = c;
-        *(uint8_t *)(video_mem + ((NUM_COLS * screen_y + screen_x) << 1) + 1) = attr;
-        screen_x++;
-        screen_x %= NUM_COLS;
-        screen_y = (screen_y + (screen_x / NUM_COLS)) % NUM_ROWS;
-    }
+
+	switch (c) {
+		case '\n':
+			screen_y ++;
+			screen_x = 0;
+			if (screen_y >= NUM_ROWS) {
+				scroll();
+				screen_y = NUM_ROWS - 1;
+			}
+			break;
+
+		case '\r':
+			screen_x = 0;
+			break;
+
+		case '\b':
+			back();
+			set_vid_char(screen_y, screen_x, ' ');
+			break;
+
+		default:
+			set_vid_char(screen_y, screen_x, c);
+			screen_x++;
+			if (screen_x >= NUM_COLS) {
+				screen_x -= NUM_COLS;
+				screen_y ++;
+			}
+			if (screen_y >= NUM_ROWS) {
+				scroll();
+				screen_y = NUM_ROWS - 1;
+			}
+			break;
+	}
 }
 
 /* int8_t* itoa(uint32_t value, int8_t* buf, int32_t radix);

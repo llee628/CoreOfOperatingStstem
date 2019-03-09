@@ -67,8 +67,8 @@ void kb_isr(void) {
         keycode = inb(0x60);
         /* Only print characters on keydown event that have
          * a non-zero mapping */
-        if (keycode >= 0 && keyboard_map[keycode]) {
-            putc(keyboard_map[keycode]);
+        if (keycode >= 0 && keyboard_map[(int)keycode]) {
+            putc(keyboard_map[(int)keycode]);
         }
     }
 }

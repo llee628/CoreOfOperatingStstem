@@ -11,6 +11,7 @@
 #include "tests.h"
 #include "rtc.h"
 #include "kb.h"
+#include "page.h"
 
 #define RUN_TESTS
 
