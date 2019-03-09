@@ -55,12 +55,14 @@ void enable_irq(uint32_t irq_num) {
     if(irq_num < SLAVE_IRQ_OFF){
       for(i = 0; i < irq_num; i++)
         enable = (enable << 1) + 1;         // shift the 0 left by 1 without having other zeroes
+      /* Update master_mask to reflect currently enable interrupts */
       master_mask = master_mask & enable;
       outb(master_mask, MASTER_8259_DATA);
     }
     else{
       for(j = SLAVE_IRQ_OFF; j < irq_num; j++)
         enable = (enable << 1) + 1;       // shift the 0 left by 1 without having other zeroes
+      /* Update master_mask and slave_mask to reflect currently enable interrupts */
       slave_mask = slave_mask & enable;
       master_mask = master_mask & ~(ICW3_SLAVE);
       outb(slave_mask, SLAVE_8259_DATA);
@@ -78,12 +80,14 @@ void disable_irq(uint32_t irq_num) {
     if(irq_num < SLAVE_IRQ_OFF){
       for(i = 0; i < irq_num; i++)
         disable = disable << 1;
+      /* Update master_mask to reflect currently enable interrupts */
       master_mask = master_mask | disable;
       outb(master_mask, MASTER_8259_DATA);
     }
     else{
       for(j = SLAVE_IRQ_OFF; j < irq_num; j++)
         disable = disable << 1;
+      /* Update master_mask  and slave mask to reflect currently enable interrupts */
       slave_mask = slave_mask | disable;
       if(!slave_mask)
         master_mask = master_mask | ICW3_SLAVE;

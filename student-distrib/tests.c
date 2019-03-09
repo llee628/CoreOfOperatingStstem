@@ -66,6 +66,29 @@ int test_dvb(){
 	return FAIL;
 }
 
+int test_df(){
+	TEST_HEADER;
+	printf("Testing Double Fault exception \n");
+	asm volatile("int $8");
+	return FAIL;
+}
+
+
+int test_br(){
+	TEST_HEADER;
+	printf("Testing Bound Range exception \n");
+	asm volatile("int $5");
+	return FAIL;
+}
+
+
+int test_while_loop_page(){
+	TEST_HEADER;
+	while(1);
+	assertion_failure();
+	return FAIL;
+}
+
 /* Function: test_dvb;
  * Inputs: none
  * Return Value: FAIL if exception was not thrown
@@ -95,7 +118,6 @@ int test_deref_vid_mem(){
 	int* i = (int*)(0xB8000);
 	printf("Testing deref vid_mem\n");
 	k = *i;
-	//assertion_failure();
 	return PASS;
 }
 
@@ -122,7 +144,6 @@ int test_deref_kernel(){
 	int* i = (int*)(0x400000);
 	printf("Testing deref kernel\n");
 	k = *i;
-	//assertion_failure();
 	return PASS;
 }
 
@@ -145,7 +166,10 @@ int test_deref_above_kernel(){
 void launch_tests(){
 	//TEST_OUTPUT("idt_test", idt_test());
 	// launch your tests here
-  TEST_OUTPUT("test_dvb", test_dvb());
+  //TEST_OUTPUT("test_dvb", test_dvb());
+	//TEST_OUTPUT("test_br", test_br());
+	//TEST_OUTPUT("test_df", test_df());
+	TEST_OUTPUT("test_while_loop_page", test_while_loop_page());
 	//TEST_OUTPUT("test_deref_null", test_deref_null());
 	//TEST_OUTPUT("test_deref_below_vid_mem", test_deref_below_vid_mem());
 	//TEST_OUTPUT("test_deref_vid_mem", test_deref_vid_mem());

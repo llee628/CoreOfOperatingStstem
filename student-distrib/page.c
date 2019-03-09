@@ -2,6 +2,7 @@
 #include "lib.h"
 #include "x86_desc.h"
 
+/* global arrays for the page directory and page table */
 static PDE_t __attribute__((aligned (4096))) page_directory[MAX_ENTRIES];
 static PTE_t __attribute__((aligned (4096))) table[MAX_ENTRIES];
 
@@ -9,7 +10,9 @@ void init_page(void){
     /* for loop indices */
     int i, j;
 
-    /* initialize the page table */
+    /* For details of the default page values, refer to IA-32 page 3-25 */
+
+    /* initialize the page table to default values*/
     page_directory[0].table_PDE.present = 0x1;
     page_directory[0].table_PDE.read_write = 0x1;
     page_directory[0].table_PDE.user_super = 0x0;
@@ -22,7 +25,7 @@ void init_page(void){
     page_directory[0].table_PDE.available = 0x0;
     page_directory[0].table_PDE.table_addr = (uint32_t)table >> ADDRESS_SHIFT;
 
-    /* initialize the kernel page */
+    /* initialize the kernel page to default values*/
     page_directory[1].page_PDE.present = 0x1;
     page_directory[1].page_PDE.read_write = 0x1;
     page_directory[1].page_PDE.user_super = 0x1;
@@ -37,11 +40,12 @@ void init_page(void){
     page_directory[1].page_PDE.reserved =0x0;
     page_directory[1].page_PDE.page_addr = 0x1;
 
-    /* fill in the page table, mark everything that isnt vid_mem
+    /* fill in the page table to default values, mark everything that isnt vid_mem
     * as not present
     */
     for(i = 0; i < MAX_ENTRIES; i++){
-
+      /* if the current mapping is to the Video memory
+      * then mark present, else mark it unpresent */
       if(i == VID_MEM_ADDR){
         table[i].present = 0x1;
         table[i].user_super = 0x1;
@@ -61,7 +65,7 @@ void init_page(void){
       table[i].page_addr = i;
     }
 
-    /* mark the rest of the page directory as not present */
+    /* mark the rest of the page directory to default values and mark as not present */
     for(j = 2; j < MAX_ENTRIES; j++){
       page_directory[j].page_PDE.present = 0x0;
       page_directory[j].page_PDE.read_write = 0x1;
@@ -78,6 +82,7 @@ void init_page(void){
       page_directory[j].page_PDE.page_addr = 0x0;
     }
 
+    /* Enable paging and 4MB pages */
     asm volatile(
       " movl %0, %%eax; "
       " movl %%eax, %%cr3; "
