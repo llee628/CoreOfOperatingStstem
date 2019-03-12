@@ -4,13 +4,16 @@
 #include "lib.h"
 
 #define RTC     1
+extern int int_flag;
 
 int32_t read (int32_t fd, void* buf, int32_t nbytes){
     
-    if (fd == RTC)
-    {
-        if (int_flag == 0)
+    while (1){
+        if (int_flag == 1)
             return 0;
     }
+   
+    
+    
     
 }

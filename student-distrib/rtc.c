@@ -5,6 +5,8 @@
 #include "lib.h"
 #include "i8259.h"
 
+int int_flag = 0;       //global variable. could be bad. needs find way to fix that
+
 void init_rtc(void) {
 	char prev;
 	cli();
@@ -32,7 +34,9 @@ void init_rtc(void) {
 }
 
 void rtc_isr(void) {
+    int_flag = 1;
 	test_interrupts();
 	outb(0x0C, 0x70);
 	(void) inb(0x71);
+    int_flag = 0;
 }
