@@ -148,7 +148,7 @@ void entry(unsigned long magic, unsigned long addr) {
     /* Init the PIC */
     i8259_init();
     /* Init the RTC */
-	/* init_rtc(); */
+	  //init_rtc();
     /* Init the keyboard */
 	init_kb();
 	init_term();
