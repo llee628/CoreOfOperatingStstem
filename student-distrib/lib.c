@@ -9,6 +9,27 @@ static int screen_y;
 static char* video_mem = (char *)VIDEO;
 static uint8_t attr = ATTRIB;
 
+int isalpha(uint8_t ch) {
+	return (ch >= 'a' && ch <= 'z')
+		|| (ch >= 'A' && ch <= 'Z');
+}
+
+int isnum(uint8_t ch) {
+	return ch >= '0' && ch <= '9';
+}
+
+int isalnum(uint8_t ch) {
+	return isalpha(ch) || isnum(ch);
+}
+
+int getposx() {
+	return screen_x;
+}
+
+int getposy() {
+	return screen_y;
+}
+
 /* void clear(void);
  * Inputs: void
  * Return Value: none
@@ -26,12 +47,26 @@ void clear() {
  * Return Value: void
  *  Function: Set the cursor position */
 void setpos(int x, int y) {
-	if (x < 0 || x >= NUM_COLS || y < 0 || y >= NUM_ROWS) {
-		return;
+	if (x < 0) {
+		x = 0;
+	} else if (x >= NUM_COLS) {
+		x = NUM_COLS - 1;
+	}
+	if (y < 0) {
+		y = 0;
+	} else if (y >= NUM_ROWS) {
+		y = NUM_ROWS - 1;
 	}
 
 	screen_x = x;
 	screen_y = y;
+
+	// Set VGA cursor position
+	uint16_t curpos = screen_x + screen_y * NUM_COLS;
+	outb(0x0F, 0x3D4);
+	outb(curpos & 0xFF, 0x3D5);
+	outb(0x0E, 0x3D4);
+	outb((curpos >> 8) & 0xFF, 0x3D5);
 }
 
 /* void setattr(uint8_t _attr);
@@ -212,6 +247,7 @@ void set_vid_char(int x, int y, uint8_t ch) {
  *  Function: Output a character to the console */
 void scroll(void) {
 	int x, y;
+	uint8_t old_attr = attr;
 	for (y = 0; y < NUM_ROWS - 1; y ++) {
 		for (x = 0; x < NUM_COLS; x ++) {
 			// We want to copy the attributes as well
@@ -222,6 +258,8 @@ void scroll(void) {
 	for (x = 0; x < NUM_COLS; x ++) {
 		set_vid_char(x, NUM_ROWS - 1, ' ');
 	}
+	setpos(screen_x, screen_y - 1);
+	setattr(old_attr);
 }
 
 /* void putc(uint8_t c);
@@ -234,6 +272,7 @@ void back(void) {
 		screen_x += NUM_COLS;
 		screen_y --;
 	}
+	setpos(screen_x, screen_y);
 }
 
 /* void putc(uint8_t c);
@@ -257,10 +296,10 @@ void putc(uint8_t c) {
   			c += 10;
   		}
   		if (state == 1) {
-  			attr = (attr & 0xF0) | (c & 0x0F);
+  			setattr((attr & 0xF0) | (c & 0x0F));
   			state ++;
   		} else if (state == 2) {
-  			attr = (attr & 0x0F) | (c & 0xF0);
+  			setattr((attr & 0x0F) | (c & 0xF0));
   			state = 0;
   		}
   		return;
@@ -299,6 +338,7 @@ void putc(uint8_t c) {
 			}
 			break;
 	}
+	setpos(screen_x, screen_y);
 }
 
 /* int8_t* itoa(uint32_t value, int8_t* buf, int32_t radix);
