@@ -66,6 +66,11 @@ int test_dvb(){
 	return FAIL;
 }
 
+/* Function: test_df;
+ * Inputs: none
+ * Return Value: FAIL if exception was not thrown
+ * Function: Checks if Double Fault exception is properly initialized in IDT
+ */
 int test_df(){
 	TEST_HEADER;
 	printf("Testing Double Fault exception \n");
@@ -73,6 +78,11 @@ int test_df(){
 	return FAIL;
 }
 
+/* Function: test_br;
+ * Inputs: none
+ * Return Value: FAIL if exception was not thrown
+ * Function: Checks if Bound Range exception is properly initialized in IDT
+ */
 
 int test_br(){
 	TEST_HEADER;
@@ -81,6 +91,11 @@ int test_br(){
 	return FAIL;
 }
 
+/* Function: test_while_loop_page;
+ * Inputs: none
+ * Return Value: FAIL or crash if paging is not initialized correctly
+ * Function: Checks if kernel can be in a while loop with paging enabled
+ */
 
 int test_while_loop_page(){
 	TEST_HEADER;
@@ -89,10 +104,11 @@ int test_while_loop_page(){
 	return FAIL;
 }
 
-/* Function: test_dvb;
+/* Function: test_deref_null;
  * Inputs: none
- * Return Value: FAIL if exception was not thrown
- * Function: Checks if Divide by Zero exception is properly initialized in IDT
+ * Return Value: FAIL if page fault exception was not thrown
+ * Function: Checks if page fault exception is properly initialized in IDT
+ *					and paging has been initialized properly
  */
 int test_deref_null(){
 	TEST_HEADER;
@@ -104,6 +120,12 @@ int test_deref_null(){
 	return FAIL;
 }
 
+/* Function: test_deref_below_vid_mem;
+ * Inputs: none
+ * Return Value: FAIL if page fault exception was not thrown
+ * Function: Checks if page fault exception is properly initialized in IDT
+ *					and paging has been initialized properly
+ */
 int test_deref_below_vid_mem(){
 	int k;
 	int* i = (int*)(0xB8000 - 1);
@@ -113,6 +135,11 @@ int test_deref_below_vid_mem(){
 	return FAIL;
 }
 
+/* Function: test_deref_vid_mem;
+ * Inputs: none
+ * Return Value: Pass if vid_mem is properly paged
+ * Function: Checks if vid mem is paged correctly
+ */
 int test_deref_vid_mem(){
 	int k;
 	int* i = (int*)(0xB8000);
@@ -121,6 +148,12 @@ int test_deref_vid_mem(){
 	return PASS;
 }
 
+/* Function: test_deref_above_vid_mem;
+ * Inputs: none
+ * Return Value: FAIL if page fault exception was not thrown
+ * Function: Checks if page fault exception is properly initialized in IDT
+ *					and paging has been initialized properly
+ */
 int test_deref_above_vid_mem(){
 	int k;
 	int* i = (int*)(0xB8000 + 0x4000 + 1);
@@ -130,6 +163,12 @@ int test_deref_above_vid_mem(){
 	return FAIL;
 }
 
+/* Function: test_deref_below_kernel;
+ * Inputs: none
+ * Return Value: FAIL if page fault exception was not thrown
+ * Function: Checks if page fault exception is properly initialized in IDT
+ *					and paging has been initialized properly
+ */
 int test_deref_below_kernel(){
 	int k;
 	int* i = (int*)(0x400000 - 1);
@@ -139,6 +178,11 @@ int test_deref_below_kernel(){
 	return FAIL;
 }
 
+/* Function: test_deref_kernel;
+ * Inputs: none
+ * Return Value: Pass if kernel code is properly paged
+ * Function: Checks if kernel is paged correctly
+ */
 int test_deref_kernel(){
 	int k;
 	int* i = (int*)(0x400000);
@@ -147,6 +191,12 @@ int test_deref_kernel(){
 	return PASS;
 }
 
+/* Function: test_deref_above_kernel;
+ * Inputs: none
+ * Return Value: FAIL if page fault exception was not thrown
+ * Function: Checks if page fault exception is properly initialized in IDT
+ *					and paging has been initialized properly
+ */
 int test_deref_above_kernel(){
 	int k;
 	int* i = (int*)(0x800000 + 0x4000 + 1);
