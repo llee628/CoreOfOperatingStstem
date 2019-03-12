@@ -160,14 +160,27 @@ void entry(unsigned long magic, unsigned long addr) {
     /* Do not enable the following until after you have set up your
      * IDT correctly otherwise QEMU will triple fault and simple close
      * without showing you any output */
-    /*printf("Enabling Interrupts\n");
-    sti();*/
 
 	int i;
 	for (i = 0; i < 16; i ++) {
-		printf("\x1b%x0%d", i, i);
+		setattr(i);
+		printf("%x ", i);
+		setattr(i << 4);
+		printf("%x ", i);
 	}
+	setattr(DEF_ATTR);
 	putc('\n');
+
+	uint8_t buf_size = 128;
+	char buf[buf_size];
+	while (1) {
+		term_write(" => ", 4);
+		uint8_t read_size = term_read(buf, buf_size);
+		printf("read_size = %d\n", read_size);
+		char *res = "\x1b[30buf\x1b[xx = ";
+		term_write(res, strlen(res));
+		term_write(buf, read_size);
+	}
 
 #ifdef RUN_TESTS
     /* Run tests */
