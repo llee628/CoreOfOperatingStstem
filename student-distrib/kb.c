@@ -5,7 +5,7 @@
 #include "term.h"
 #include "kb.h"
 
-static uint8_t shift, ctrl, caps;
+static uint8_t shift, ctrl, alt, caps;
 
 // Dirty keyboard interpretation code
 // Borrowed from https://stackoverflow.com/a/37635449/5264490
@@ -36,16 +36,16 @@ uint8_t shift_map[PRINT_KEY_NUM] = {
 };
 
 uint8_t ctrl_map[PRINT_KEY_NUM] = {
-          0,    27,   '1',   '2',   '3',   '4',   '5',   '6',
-        '7',   '8',   '9',   '0','\x1F',   '=',  '\b',  '\t',
-     '\x11','\x17','\x05','\x12','\x14','\x19','\x15',  '\t',
-     '\x0F','\x10','\x1B','\x1D',  '\n',     0, /* Control */
-     '\x01','\x13','\x04','\x06','\x07',  '\b',  '\n','\x0B',
-     '\x0C',   ';',  '\'','\x0A',     0, /* Left shift */
-     '\x1C','\x1A','\x18','\x03','\x16','\x02','\x0E',  '\n',
-        ',',   '.',  '',     0, /* Right shift */
-        '*',     0, /* Alt */
-     '\x0A',
+       0,   27,  '1',  '2',  '3',  '4',  '5',  '6',
+     '7',  '8',  '9',  '0', 0x1F,  '=', '\b', '\t',
+    0x11, 0x17, 0x05, 0x12, 0x14, 0x19, 0x15, '\t',
+    0x0F, 0x10, 0x1B, 0x1D, '\n',    0,  /* Control */
+    0x01, 0x13, 0x04, 0x06, 0x07, '\b', '\n', 0x0B,
+    0x0C,  ';', '\'', 0x0A,    0,  /* Left shift */
+    0x1C, 0x1A, 0x18, 0x03, 0x16, 0x02, 0x0E, '\n',
+     ',',  '.', '',    0,  /* Right shift */
+     '*',    0,  /* Alt */
+    0x0A, 
 };
 
 void init_kb(void) {
@@ -85,6 +85,10 @@ void kb_isr(void) {
             ctrl = pressed;
             break;
 
+        case 0x38:      // Left alt
+            alt = pressed;
+            break;
+
         case 0x3A:      // Capslock
             caps ^= 1;
             break;
@@ -109,6 +113,11 @@ void kb_isr(void) {
 
             if (ctrl) {
                 term_key_handler(ctrl_map[keycode]);
+                break;
+            }
+
+            if (alt) {
+                term_key_handler(ctrl_map[keycode] + 0x80);
                 break;
             }
 

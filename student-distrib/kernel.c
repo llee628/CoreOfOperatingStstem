@@ -177,7 +177,7 @@ void entry(unsigned long magic, unsigned long addr) {
 		term_write(" => ", 4);
 		uint8_t read_size = term_read(buf, buf_size);
 		printf("read_size = %d\n", read_size);
-		char *res = "\x1b[30buf\x1b[xx = ";
+		char *res = "\x1b[30buf\x1b[xx=";
 		term_write(res, strlen(res));
 		term_write(buf, read_size);
 	}
