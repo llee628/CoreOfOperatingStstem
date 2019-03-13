@@ -171,6 +171,11 @@ void entry(unsigned long magic, unsigned long addr) {
 	setattr(DEF_ATTR);
 	putc('\n');
 
+#ifdef RUN_TESTS
+    /* Run tests */
+    launch_tests();
+#endif
+
 	uint8_t buf_size = 128;
 	char buf[buf_size];
 	while (1) {
@@ -182,10 +187,7 @@ void entry(unsigned long magic, unsigned long addr) {
 		term_write(buf, read_size);
 	}
 
-#ifdef RUN_TESTS
-    /* Run tests */
-    //launch_tests();
-#endif
+
     /* Execute the first program ("shell") ... */
 
     /* Spin (nicely, so we don't chew up cycles) */

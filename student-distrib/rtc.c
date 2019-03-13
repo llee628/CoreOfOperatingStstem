@@ -75,9 +75,9 @@ int rtc_set_pi_freq(int32_t freq){
 	return 0;
 }
 
-
 void rtc_isr(void) {
-	test_interrupts();
+	test_interrupt_freq(0,0);
+	//test_interrupts();
 	outb(0x0C, 0x70);
 	(void) inb(0x71);
 }

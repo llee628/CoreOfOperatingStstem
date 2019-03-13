@@ -215,31 +215,55 @@ int test_deref_above_kernel(){
  * Function: Checks if kernel is paged correctly
  */
 int test_rtc_set_pi_freq(){
-	int pow ;
+	int i =0;
+	// Test invalid arguments
+	{	
+		// test argument out of range
+		if( rtc_set_pi_freq(-1) != -1){ return FAIL;}
+		if( rtc_set_pi_freq(-100) != -1){ return FAIL;}
+		if( rtc_set_pi_freq(16384) != -1){ return FAIL;}
+		if( rtc_set_pi_freq(4096) != -1){ return FAIL;}
+		if( rtc_set_pi_freq(8192) != -1){ return FAIL;}
 
-	// test argument out of range
-	if( rtc_set_pi_freq(16384) != -1){ return FAIL;}
-	if( rtc_set_pi_freq(8192) != -1){ return FAIL;}
-	if( rtc_set_pi_freq(-1) != -1){ return FAIL;}
-	
+		// test not power of 2
+		if( rtc_set_pi_freq(0) != -1){ return FAIL;}
+		if( rtc_set_pi_freq(87) != -1){ return FAIL;}
+		if( rtc_set_pi_freq(199) != -1){ return FAIL;}
+		if( rtc_set_pi_freq(878) != -1){ return FAIL;}
+		if( rtc_set_pi_freq(2049) != -1){ return FAIL;}
+	}
+
+	// system should have the ability to set freq more than 1024Hz.
 	// test maximum user freq
 	// not done yet
-	// test
+	
+	// test valid arguments
+	{
+		printf(" Test RTC in different frequency,the dot should always\
+		pace in the same speed, regarless of the frequency.\n");
+		test_interrupt_freq(1,2);
+		if( rtc_set_pi_freq(2) != 0){ return FAIL;}
+		while( test_interrupt_freq(2,0) != 0 ){
+			; // waiting test to be finshed
+		}
 
-	// test valid argument;
-	for( pow=1; pow<=13; pow++ ){
-		if( rtc_set_pi_freq( 2<<pow) != 0 ){
-			return FAIL;
+		test_interrupt_freq(1,256);
+		if( rtc_set_pi_freq(256) != 0){ return FAIL;}
+		while( test_interrupt_freq(2,0) != 0 ){
+			; // waiting test to be finshed
+		}
+
+		test_interrupt_freq(1,1024);
+		if( rtc_set_pi_freq(1024) != 0){ return FAIL;}
+		while( test_interrupt_freq(2,0) != 0 ){
+			; // waiting test to be finshed
+		}
+		// use a loop to prevent race condition in printing result.
+		i=0;
+		while(++i<1000){
+			;
 		}
 	}
-	// test not power of 2
-	if( rtc_set_pi_freq(87) != -1){ return FAIL;}
-	if( rtc_set_pi_freq(2049) != -1){ return FAIL;}
-	if( rtc_set_pi_freq(0) != -1){ return FAIL;}
-	if( rtc_set_pi_freq(878) != -1){ return FAIL;}
-
-	// test RTC
-	if( rtc_set_pi_freq(2) != 0){ return FAIL;}
 	return PASS;
 }
 
