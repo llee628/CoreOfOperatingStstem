@@ -2,8 +2,9 @@
 #include "kb.h"
 #include "lib.h"
 
-uint8_t term_buf_size = 0;
-char *term_buf = NULL;
+#define TERM_BUF_SIZE 127
+#define TERM_BUF_SIZE_W_NL 128
+char term_buf[TERM_BUF_SIZE_W_NL];
 uint8_t term_buf_count = 0;
 uint8_t term_read_done = 0;
 uint8_t term_curpos = 0;
@@ -11,19 +12,29 @@ uint8_t term_curpos = 0;
 void addch(uint8_t ch);
 void delch();
 
+int32_t term_open() {
+    return 0;
+}
+
+int32_t term_close() {
+    return 0;
+}
+
 int32_t term_read(void* buf, int32_t nbytes) {
-    term_buf = (char *) buf;
-    term_buf_size = nbytes - 1;     // Reserve space for newline
-    term_buf_count = 0;
-    term_read_done = 0;
-    term_curpos = 0;
+    if (!buf) {
+        return -1;
+    }
     while (!term_read_done) {
         asm volatile ("hlt");
     }
-    term_key_handler(0x05);
     putc('\n');
     term_buf[term_buf_count++] = '\n';
-    return term_buf_count;
+    int copy_count = nbytes < term_buf_count ? nbytes : term_buf_count;
+    memcpy(buf, term_buf, copy_count);
+    term_buf_count = 0;
+    term_read_done = 0;
+    term_curpos = 0;
+    return copy_count;
 }
 
 int32_t term_write(const void* buf, int32_t nbytes) {
@@ -201,7 +212,7 @@ void term_key_handler(uint8_t ch) {
 
 // Add a character to the line buf
 void addch(uint8_t ch) {
-    if (term_buf_count < term_buf_size) {
+    if (term_buf_count < TERM_BUF_SIZE) {
         int i;
         for (i = term_buf_count; i > term_curpos; i --) {
             term_buf[i] = term_buf[i - 1];
