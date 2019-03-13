@@ -2,6 +2,7 @@
 #include "x86_desc.h"
 #include "lib.h"
 #include "idt.h"
+#include "rtc.h"
 
 #define PASS 1
 #define FAIL 0
@@ -207,6 +208,41 @@ int test_deref_above_kernel(){
 }
 
 /* Checkpoint 2 tests */
+
+/* Function: test_deref_kernel;
+ * Inputs: none
+ * Return Value: Pass if argument is checked. Failed if 
+ * Function: Checks if kernel is paged correctly
+ */
+int test_rtc_set_pi_freq(){
+	int pow ;
+
+	// test argument out of range
+	if( rtc_set_pi_freq(16384) != -1){ return FAIL;}
+	if( rtc_set_pi_freq(8192) != -1){ return FAIL;}
+	if( rtc_set_pi_freq(-1) != -1){ return FAIL;}
+	
+	// test maximum user freq
+	// not done yet
+	// test
+
+	// test valid argument;
+	for( pow=1; pow<=13; pow++ ){
+		if( rtc_set_pi_freq( 2<<pow) != 0 ){
+			return FAIL;
+		}
+	}
+	// test not power of 2
+	if( rtc_set_pi_freq(87) != -1){ return FAIL;}
+	if( rtc_set_pi_freq(2049) != -1){ return FAIL;}
+	if( rtc_set_pi_freq(0) != -1){ return FAIL;}
+	if( rtc_set_pi_freq(878) != -1){ return FAIL;}
+
+	// test RTC
+	if( rtc_set_pi_freq(2) != 0){ return FAIL;}
+	return PASS;
+}
+
 /* Checkpoint 3 tests */
 /* Checkpoint 4 tests */
 /* Checkpoint 5 tests */
@@ -219,7 +255,7 @@ void launch_tests(){
   //TEST_OUTPUT("test_dvb", test_dvb());
 	//TEST_OUTPUT("test_br", test_br());
 	//TEST_OUTPUT("test_df", test_df());
-	TEST_OUTPUT("test_while_loop_page", test_while_loop_page());
+	//TEST_OUTPUT("test_while_loop_page", test_while_loop_page());
 	//TEST_OUTPUT("test_deref_null", test_deref_null());
 	//TEST_OUTPUT("test_deref_below_vid_mem", test_deref_below_vid_mem());
 	//TEST_OUTPUT("test_deref_vid_mem", test_deref_vid_mem());
@@ -227,4 +263,7 @@ void launch_tests(){
 	//TEST_OUTPUT("test_deref_below_kernel", test_deref_below_kernel());
 	//TEST_OUTPUT("test_deref_kernel", test_deref_kernel());
 	//TEST_OUTPUT("test_deref_above_kernel", test_deref_above_kernel());
+
+	// ------ Check point 2
+	TEST_OUTPUT("test_rtc_set_pi_freq", test_rtc_set_pi_freq());
 }
