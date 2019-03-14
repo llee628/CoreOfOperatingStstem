@@ -4,7 +4,7 @@
 #include "x86_desc.h"
 #include "lib.h"
 #include "i8259.h"
-//#include "rtc_fuc.h"
+
 
 int int_flag = 1;
 
@@ -43,12 +43,28 @@ void rtc_isr(void) {
 }
 
 
-int32_t rtc_read (){
+int32_t rtc_read(){
     //int prev;
     //prev = inb(0x71);
     while (1){
         if (int_flag == 0)
             return 0;
     }
+}
+
+int32_t rtc_open(){
+    char prev;
+    cli();
+    // Set frequency to 2 Hz
+    outb(0x8A, 0x70);        // set index to register A, disable NMI
+    prev = inb(0x71);        // get initial value of register A
+    outb(0x8A, 0x70);        // reset index to A
+    outb((prev & 0xF0) | RTC_OPEN_RATE, 0x71); //write only our rate to A. Note, rate is the bottom 4 bits.
+    sti();
+    return 0;
+}
+
+int32_t rtc_close(){
+    return 0;
 }
 
