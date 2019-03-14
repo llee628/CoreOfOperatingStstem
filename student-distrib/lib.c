@@ -7,9 +7,30 @@
 static int screen_x;
 static int screen_y;
 static char* video_mem = (char *)VIDEO;
-static uint8_t attr = ATTRIB;
+static uint8_t attr = DEF_ATTR;
 
-/* void clear(void);
+int isalpha(uint8_t ch) {
+	return (ch >= 'a' && ch <= 'z')
+		|| (ch >= 'A' && ch <= 'Z');
+}
+
+int isnum(uint8_t ch) {
+	return ch >= '0' && ch <= '9';
+}
+
+int isalnum(uint8_t ch) {
+	return isalpha(ch) || isnum(ch);
+}
+
+int getposx() {
+	return screen_x;
+}
+
+int getposy() {
+	return screen_y;
+}
+
+/* void clear();
  * Inputs: void
  * Return Value: none
  * Function: Clears video memory */
@@ -26,12 +47,26 @@ void clear() {
  * Return Value: void
  *  Function: Set the cursor position */
 void setpos(int x, int y) {
-	if (x < 0 || x >= NUM_COLS || y < 0 || y >= NUM_ROWS) {
-		return;
+	if (x < 0) {
+		x = 0;
+	} else if (x >= NUM_COLS) {
+		x = NUM_COLS - 1;
+	}
+	if (y < 0) {
+		y = 0;
+	} else if (y >= NUM_ROWS) {
+		y = NUM_ROWS - 1;
 	}
 
 	screen_x = x;
 	screen_y = y;
+
+	// Set VGA cursor position
+	uint16_t curpos = screen_x + screen_y * NUM_COLS;
+	outb(0x0F, 0x3D4);
+	outb(curpos & 0xFF, 0x3D5);
+	outb(0x0E, 0x3D4);
+	outb((curpos >> 8) & 0xFF, 0x3D5);
 }
 
 /* void setattr(uint8_t _attr);
@@ -40,6 +75,10 @@ void setpos(int x, int y) {
  *  Function: Set the attribute of following prints to _attr */
 void setattr(uint8_t _attr) {
 	attr = _attr;
+}
+
+uint8_t getattr() {
+	return attr;
 }
 
 /* Standard printf().
@@ -210,8 +249,9 @@ void set_vid_char(int x, int y, uint8_t ch) {
  * Inputs: uint_8* c = character to print
  * Return Value: void
  *  Function: Output a character to the console */
-void scroll(void) {
+void scroll() {
 	int x, y;
+	uint8_t old_attr = attr;
 	for (y = 0; y < NUM_ROWS - 1; y ++) {
 		for (x = 0; x < NUM_COLS; x ++) {
 			// We want to copy the attributes as well
@@ -219,21 +259,34 @@ void scroll(void) {
 			set_vid_char(x, y, get_vid_char(x, y + 1));
 		}
 	}
+	setattr(DEF_ATTR);
 	for (x = 0; x < NUM_COLS; x ++) {
 		set_vid_char(x, NUM_ROWS - 1, ' ');
 	}
+	setpos(screen_x, screen_y - 1);
+	setattr(old_attr);
 }
 
 /* void putc(uint8_t c);
  * Inputs: uint_8* c = character to print
  * Return Value: void
  *  Function: Output a character to the console */
-void back(void) {
+void back() {
 	screen_x --;
 	if (screen_x < 0) {
 		screen_x += NUM_COLS;
 		screen_y --;
 	}
+	setpos(screen_x, screen_y);
+}
+
+void forward() {
+	screen_x ++;
+	if (screen_x >= NUM_COLS) {
+		screen_x -= NUM_COLS;
+		screen_y ++;
+	}
+	setpos(screen_x, screen_y);
 }
 
 /* void putc(uint8_t c);
@@ -241,32 +294,6 @@ void back(void) {
  * Return Value: void
  *  Function: Output a character to the console */
 void putc(uint8_t c) {
-	static uint8_t state = 0;
-	if (c == '\x1b') {
-  		state = 1;
-  		return;
-    }
-  	if (state == 1 || state == 2) {
-  		if (c >= '0' && c <= '9') {
-  			c -= '0';
-  		} else if (c >= 'A' && c <= 'F') {
-  			c -= 'A';
-  			c += 10;
-  		} else if (c >= 'a' && c <= 'f') {
-  			c -= 'a';
-  			c += 10;
-  		}
-  		if (state == 1) {
-  			attr = (attr & 0xF0) | (c & 0x0F);
-  			state ++;
-  		} else if (state == 2) {
-  			attr = (attr & 0x0F) | (c & 0xF0);
-  			state = 0;
-  		}
-  		return;
-	}
-	state = 0;
-
 	switch (c) {
 		case '\n':
 			screen_y ++;
@@ -299,6 +326,7 @@ void putc(uint8_t c) {
 			}
 			break;
 	}
+	setpos(screen_x, screen_y);
 }
 
 /* int8_t* itoa(uint32_t value, int8_t* buf, int32_t radix);
@@ -585,11 +613,11 @@ int8_t* strncpy(int8_t* dest, const int8_t* src, uint32_t n) {
     return dest;
 }
 
-/* void test_interrupts(void)
+/* void test_interrupts()
  * Inputs: void
  * Return Value: void
  * Function: increments video memory. To be used to test rtc */
-void test_interrupts(void) {
+void test_interrupts() {
     int32_t i;
     for (i = 0; i < NUM_ROWS * NUM_COLS; i++) {
         video_mem[i << 1]++;
