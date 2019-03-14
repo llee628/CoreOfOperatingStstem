@@ -13,7 +13,7 @@
 #include "kb.h"
 #include "page.h"
 #include "term.h"
-#include "rtc_fuc.h"
+//#include "rtc_fuc.h"
 
 
 #define RUN_TESTS
