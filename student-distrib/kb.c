@@ -5,7 +5,7 @@
 #include "term.h"
 #include "kb.h"
 
-static uint8_t shift, ctrl, alt, caps;
+static uint8_t shift, ctrl, alt, caps, scan_state = 0;
 
 // Dirty keyboard interpretation code
 // Borrowed from https://stackoverflow.com/a/37635449/5264490
@@ -70,57 +70,86 @@ void kb_isr(void) {
         return;
     }
     keycode = inb(0x60);
+    if (keycode == 0xE0) {
+        scan_state = 1;
+        return;
+    }
     // Key is pressed if MSB is set
     uint8_t pressed = !(keycode & 0x80);
     keycode = keycode & 0x7F;
-    /* Only print characters on keydown event that have
-     * a non-zero mapping */
-    switch (keycode) {
-        case 0x2A:      // Left shift
-        case 0x36:      // Right shift
-            shift = pressed;
-            break;
-
-        case 0x1D:      // Left control
-            ctrl = pressed;
-            break;
-
-        case 0x38:      // Left alt
-            alt = pressed;
-            break;
-
-        case 0x3A:      // Capslock
-            caps ^= 1;
-            break;
-        default:
-            if (keycode >= PRINT_KEY_NUM) { // We've got a key we can't handle
-                return;
-            }
-
-            if (!pressed) {
-                return;
-            }
-            if ((caps ^ shift) 
-                    && keyboard_map[keycode] >= 'A' 
-                    && keyboard_map[keycode] <= 'Z') {  // Emit uppercase letters when only CAPS or shift is on
-                term_key_handler(shift_map[keycode]);
+    if (scan_state == 0) {
+        /* Only print characters on keydown event that have
+         * a non-zero mapping */
+        switch (keycode) {
+            case 0x2A:      // Left shift
+            case 0x36:      // Right shift
+                shift = pressed;
                 break;
-            }
-            if (shift) {
-                term_key_handler(shift_map[keycode]);
-                break;
-            }
 
-            if (ctrl) {
-                term_key_handler(ctrl_map[keycode]);
+            case 0x1D:      // Left control
+                ctrl = pressed;
                 break;
-            }
 
-            if (alt) {
-                term_key_handler(ctrl_map[keycode] + 0x80);
+            case 0x38:      // Left alt
+                alt = pressed;
                 break;
-            }
 
-            term_key_handler(keyboard_map[keycode]);
+            case 0x3A:      // Capslock
+                caps ^= 1;
+                break;
+            default:
+                if (keycode >= PRINT_KEY_NUM) { // We've got a key we can't handle
+                    return;
+                }
+
+                if (!pressed) {
+                    return;
+                }
+                if ((caps ^ shift) 
+                        && keyboard_map[keycode] >= 'A' 
+                        && keyboard_map[keycode] <= 'Z') {  // Emit uppercase letters when only CAPS or shift is on
+                    term_key_handler(shift_map[keycode]);
+                    break;
+                }
+                if (shift) {
+                    term_key_handler(shift_map[keycode]);
+                    break;
+                }
+
+                if (ctrl) {
+                    term_key_handler(ctrl_map[keycode]);
+                    break;
+                }
+
+                if (alt) {
+                    term_key_handler(ctrl_map[keycode] + 0x80);
+                    break;
+                }
+
+                term_key_handler(keyboard_map[keycode]);
+        }
+    } else if (scan_state == 1) {
+        switch (keycode) {
+            case 0x1D:      // Right control
+                ctrl = pressed;
+                break;
+
+            case 0x38:      // Right alt
+                alt = pressed;
+                break;
+
+            case 0x4B:      // Left arrow
+                if (pressed) {
+                    term_key_handler(0x02);
+                }
+                break;
+
+            case 0x4D:      // Right arrow;
+                if (pressed) {
+                    term_key_handler(0x06);
+                }
+                break;
+        }
+        scan_state = 0;
     }
 }
