@@ -4,8 +4,9 @@
 #include "x86_desc.h"
 #include "lib.h"
 #include "i8259.h"
+#include "rtc_fuc.h"
 
-int int_flag = 0;       //global variable. could be bad. needs find way to fix that
+int int_flag = 1;
 
 void init_rtc(void) {
 	char prev;
@@ -40,3 +41,14 @@ void rtc_isr(void) {
 	(void) inb(0x71);
     int_flag = 0;
 }
+
+/*
+int32_t rtc_read (){
+    //int prev;
+    //prev = inb(0x71);
+    while (1){
+        if (int_flag == 1)
+            return 0;
+    }
+}
+ */

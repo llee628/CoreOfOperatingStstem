@@ -12,8 +12,8 @@
 #include "rtc.h"
 #include "kb.h"
 #include "page.h"
-#include "rtc_read.h"
 #include "term.h"
+#include "rtc_fuc.h"
 
 
 #define RUN_TESTS
@@ -150,7 +150,7 @@ void entry(unsigned long magic, unsigned long addr) {
     /* Init the PIC */
     i8259_init();
     /* Init the RTC */
-	  init_rtc();
+    init_rtc();
     /* Init the keyboard */
 	init_kb();
 	init_term();
@@ -179,9 +179,12 @@ void entry(unsigned long magic, unsigned long addr) {
 		term_write(" => ", 4);
 		uint8_t read_size = term_read(buf, buf_size);
 		printf("read_size = %d\n", read_size);
+        int32_t rtc_read_rvalue = rtc_read();
+        printf("rtc_read_rvalue = %d\n", rtc_read_rvalue);
 		char *res = "\x1b[30buf\x1b[xx=";
 		term_write(res, strlen(res));
 		term_write(buf, read_size);
+        
 	}
 
 #ifdef RUN_TESTS
