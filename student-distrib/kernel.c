@@ -12,6 +12,7 @@
 #include "rtc.h"
 #include "kb.h"
 #include "page.h"
+#include "rtc_read.h"
 
 #define RUN_TESTS
 
@@ -147,7 +148,7 @@ void entry(unsigned long magic, unsigned long addr) {
     /* Init the PIC */
     i8259_init();
     /* Init the RTC */
-	  //init_rtc();
+	  init_rtc();
     /* Init the keyboard */
 	  init_kb();
 

@@ -35,7 +35,7 @@ void init_rtc(void) {
 
 void rtc_isr(void) {
     int_flag = 1;
-	test_interrupts();
+	//test_interrupts();
 	outb(0x0C, 0x70);
 	(void) inb(0x71);
     int_flag = 0;

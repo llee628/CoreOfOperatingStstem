@@ -7,9 +7,9 @@
 extern int int_flag;
 
 int32_t read (int32_t fd, void* buf, int32_t nbytes){
-    
     while (1){
         if (int_flag == 1)
+            printf("int_flag works");
             return 0;
     }
    
