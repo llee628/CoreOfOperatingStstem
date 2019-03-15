@@ -13,7 +13,7 @@
 #include "kb.h"
 #include "page.h"
 #include "term.h"
-
+#include "file_sys.h"
 
 
 #define RUN_TESTS
@@ -143,6 +143,10 @@ void entry(unsigned long magic, unsigned long addr) {
         ltr(KERNEL_TSS);
     }
 
+    /* Getting the File System boot block address */
+   module_t* mod = (module_t*)mbi->mods_addr;
+   uint32_t bblock_addr = (uint32_t)mod->mod_start;
+
     /* Init the IDT */
     idt_init();
     /* Init Paging */
@@ -153,8 +157,12 @@ void entry(unsigned long magic, unsigned long addr) {
     init_rtc();
     //int32_t rtc_open_rvalue = rtc_open();         //uncomment it and test_interrupts() to test rtc_open
     /* Init the keyboard */
-	init_kb();
-	init_term();
+  	init_kb();
+  	init_term();
+
+    /* Init the File System */
+    fs_init(bblock_addr);
+
 
     /* Initialize devices, memory, filesystem, enable device interrupts on the
      * PIC, any other initialization stuff... */
@@ -190,7 +198,7 @@ void entry(unsigned long magic, unsigned long addr) {
 		char *res = "\x1b[30buf\x1b[xx=";
 		term_write(res, strlen(res));
 		term_write(buf, read_size);
-        
+
 	}
 
 

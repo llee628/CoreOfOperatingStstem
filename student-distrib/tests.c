@@ -3,6 +3,7 @@
 #include "lib.h"
 #include "idt.h"
 #include "rtc.h"
+#include "file_sys.h"
 
 #define PASS 1
 #define FAIL 0
@@ -209,15 +210,112 @@ int test_deref_above_kernel(){
 
 /* Checkpoint 2 tests */
 
+int test_dir_read(){
+		//int i;
+		int bytes_read;
+		uint8_t buf[MAX_NAME_LENGTH];
+		uint8_t* filename = (uint8_t*)(".");
+		printf("File name is ");
+		puts((int8_t*)filename);
+		printf("\n");
+		fs_dir_open(filename);
+		bytes_read = (int)fs_dir_read(buf);
+		printf((int8_t*)buf);
+		printf("\n");
+		printf("Bytes read is %d\n", bytes_read);
+
+		return 1;
+}
+
+
+int test_frame0_file(){
+		int bytes_read = 0;
+		uint8_t* filename = (uint8_t*)("frame0.txt");
+		printf("Input file name is ");
+		puts((int8_t*)filename);
+		printf("\n");
+		fs_file_open(filename);
+
+		while(1){
+			uint8_t buf[1000];
+			int cur_bytes_read = fs_file_read(buf, 1000);
+			if(!cur_bytes_read)
+				break;
+			bytes_read = bytes_read + cur_bytes_read;
+			modified_puts((int8_t*)buf, 1000);
+		}
+		printf("Bytes read is %d\n", bytes_read);
+
+		if(bytes_read == 187)
+			return PASS;
+		else{
+			assertion_failure();
+			return FAIL;
+		}
+}
+
+int test_frame1_file(){
+		int bytes_read = 0;
+		uint8_t* filename = (uint8_t*)("frame1.txt");
+		printf("Input file name is ");
+		puts((int8_t*)filename);
+		printf("\n");
+		fs_file_open(filename);
+
+		while(1){
+			uint8_t buf[1000];
+			int cur_bytes_read = fs_file_read(buf, 1000);
+			if(!cur_bytes_read)
+				break;
+			bytes_read = bytes_read + cur_bytes_read;
+			modified_puts((int8_t*)buf, 1000);
+		}
+		printf("Bytes read is %d\n", bytes_read);
+
+		if(bytes_read == 174)
+			return PASS;
+		else{
+			assertion_failure();
+			return FAIL;
+		}
+}
+
+
+int test_large_file(){
+		int bytes_read = 0;
+		uint8_t* filename = (uint8_t*)("verylargetextwithverylongname.txt");
+		printf("Input file name is ");
+		puts((int8_t*)filename);
+		printf("\n");
+		fs_file_open(filename);
+
+		while(1){
+			uint8_t buf[1000];
+			int cur_bytes_read = fs_file_read(buf, 1000);
+			bytes_read = bytes_read + cur_bytes_read;
+			//modified_puts((int8_t*)buf, 1000);
+			if(!cur_bytes_read)
+				break;
+		}
+		printf("Bytes read is %d\n", bytes_read);
+
+		if(bytes_read == 5277)
+			return PASS;
+		else{
+			assertion_failure();
+			return FAIL;
+		}
+}
+
 /* Function: test_deref_kernel;
  * Inputs: none
- * Return Value: Pass if argument is checked. Failed if 
+ * Return Value: Pass if argument is checked. Failed if
  * Function: Checks if kernel is paged correctly
  */
 int test_rtc_set_pi_freq(){
 	int i =0;
 	// Test invalid arguments
-	{	
+	{
 		// test argument out of range
 		if( rtc_set_pi_freq(-1) != -1){ return FAIL;}
 		if( rtc_set_pi_freq(-100) != -1){ return FAIL;}
@@ -236,7 +334,7 @@ int test_rtc_set_pi_freq(){
 	// system should have the ability to set freq more than 1024Hz.
 	// test maximum user freq
 	// not done yet
-	
+
 	// test valid arguments
 	{
 		printf(" Test RTC in different frequency,the dot should always\
@@ -290,4 +388,9 @@ void launch_tests(){
 
 	// ------ Check point 2
 	TEST_OUTPUT("test_rtc_set_pi_freq", test_rtc_set_pi_freq());
+	//TEST_OUTPUT("test_dir_read", test_dir_read());
+	//TEST_OUTPUT("test_frame0_file", test_frame0_file());
+	//TEST_OUTPUT("test_frame1_file", test_frame1_file());
+	//TEST_OUTPUT("test_large_file", test_large_file());
+
 }
