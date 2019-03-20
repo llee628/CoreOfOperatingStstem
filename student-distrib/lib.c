@@ -623,3 +623,50 @@ void test_interrupts() {
         video_mem[i << 1]++;
     }
 }
+
+/* test_interrupt_freq 
+ * DESCRIPTION: test different frequency by printing out to the dot
+ * The dots should be print in pace of 2 Hz, no matter waht RTC frequency is.
+ * 
+ * usage:
+ *      mode:
+ *          0: rtc should call this to log one interrupt
+ *          1: Test function use this to setup a test
+ *          2: Test function use this to wait for test done
+ * 
+ *      set `new_test` to non-zero value to start a new test
+ * return value:
+ *      0: current test is done
+ *      1: current test is not yet finished
+ */
+int test_interrupt_freq(int mode, int freq){
+    const int dots_per_line=5;
+    static int i=0, cnt=0;
+    static int end=1, cur_freq=2;
+    
+    // for rtc interrupt
+    if( !end && mode==0 ){
+        if( --i <= 0){
+            i=cur_freq;
+            cnt++;
+            printf(".");
+        }
+        if( cnt >dots_per_line){
+            printf("\n");
+            end =1;
+        }
+    }
+    // for test function to set freq
+    if( end &&  mode==1){
+        cur_freq = freq >> 1;
+        end = !end;
+        i=cur_freq;
+        cnt=0;
+        printf("  Test RTC in '%d' Hz : ", freq);
+        return 0;
+    }
+    if( mode ==2 ){
+        return end? 0:1;
+    }
+    return end? 0:1;
+}

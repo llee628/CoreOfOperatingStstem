@@ -2,3 +2,4 @@
 *.dep
 *.swp
 .vscode
+*.xcodeproj
