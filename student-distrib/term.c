@@ -86,46 +86,46 @@ int32_t term_write(const void* buf, int32_t nbytes) {
     return nbytes;
 }
 
-void term_key_handler(uint8_t ch) {
+void term_key_handler(key_t key) {
     int i;
-    if (ch < ' ') {     // Non-printable; probably a control character
-        switch (ch) {
-            case 0x0C:      // C-L; clear
+    if (key.modifiers == MOD_CTRL) {     // Non-printable; probably a control character
+        switch ((uint8_t) key.key) {
+            case 'l':      // C-L; clear
                 term_buf_count = 0;
                 for (i = getposy(); i > 0; i --) {
                     scroll();
                 }
                 break;
 
-            case 0x02:      // C-B; char back
+            case 'b':      // C-B; char back
                 if (term_curpos > 0) {
                     term_curpos --;
                     back();
                 }
                 break;
 
-            case 0x06:      // C-F; char forward
+            case 'f':      // C-F; char forward
                 if (term_curpos < term_buf_count) {
                     term_curpos ++;
                     forward();
                 }
                 break;
 
-            case 0x01:      // C-A; start of line
+            case 'a':      // C-A; start of line
                 while (term_curpos > 0) {
                     term_curpos --;
                     back();
                 }
                 break;
 
-            case 0x05:      // C-E; end of line
+            case 'e':      // C-E; end of line
                 while (term_curpos < term_buf_count) {
                     term_curpos ++;
                     forward();
                 }
                 break;
 
-            case 0x17:      // C-W; kill word
+            case 'w':      // C-W; kill word
                 if (!term_curpos) {
                     break;
                 }
@@ -141,33 +141,29 @@ void term_key_handler(uint8_t ch) {
                 }
                 break;
 
-            case 0x15:      // C-U; kill line
+            case 'u':      // C-U; kill line
                 while (term_curpos > 0) {
                     delch();
                 }
                 break;
 
-            case 0x08:      // C-H; kill char
+            case 'h':      // C-H; kill char
                 delch();
                 break;
 
-            case 0x03:      // C-C; keyboard interrupt
+            case 'c':      // C-C; keyboard interrupt
                 puts("^C");
                 term_read_done = 1;
                 term_buf_count = 0;
                 break;
 
-            case '\n':      // C-M / C-J; Return
+            case 'm':      // C-M / C-J; Return
                 term_read_done = 1;
                 break;
-
-            case '\t':
-                // TODO tab
-                break;
         }
-    } else if (ch & 0x80) { // An alt'd character
-        switch (ch) {
-            case 0x82:      // M-B; word back
+    } else if (key.modifiers == MOD_ALT) { // An alt'd character
+        switch ((uint8_t) key.key) {
+            case 'b':      // M-B; word back
                 if (!term_curpos) {
                     break;
                 }
@@ -185,7 +181,7 @@ void term_key_handler(uint8_t ch) {
                 }
                 break;
 
-            case 0x86:      // M-F; word forward
+            case 'f':      // M-F; word forward
                 if (term_curpos >= term_buf_count) {
                     break;
                 }
@@ -205,8 +201,18 @@ void term_key_handler(uint8_t ch) {
                 }
                 break;
         }
+    } else if (key.key == KEY_ENTER) {
+        term_key_handler((key_t) C('m'));
+    } else if (key.key == KEY_BACK) {
+        term_key_handler((key_t) C('h'));
+    } else if (key.key == KEY_LEFT) {
+        term_key_handler((key_t) C('b'));
+    } else if (key.key == KEY_RIGHT) {
+        term_key_handler((key_t) C('f'));
+    } else if (key.key >= KEY_F1 && key.key <= KEY_F12) {
+        printf("F%d", key.key - KEY_F1);
     } else {
-        addch(ch);
+        addch((uint8_t) key.key);
     }
 }
 
