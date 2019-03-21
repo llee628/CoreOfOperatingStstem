@@ -2,6 +2,7 @@
 #include "kb.h"
 #include "lib.h"
 
+// Buffer need to include the newline, so this one reserves space for the newline
 #define TERM_BUF_SIZE 127
 #define TERM_BUF_SIZE_W_NL 128
 char term_buf[TERM_BUF_SIZE_W_NL];
@@ -12,6 +13,7 @@ uint8_t term_curpos = 0;
 void addch(uint8_t ch);
 void delch();
 
+// Dummy open and close functions
 int32_t term_open() {
     return 0;
 }
@@ -42,6 +44,10 @@ int32_t term_write(const void* buf, int32_t nbytes) {
     static uint8_t state = 0;
     for (i = 0; i < nbytes; i ++) {
         uint8_t c = ((char * ) buf)[i];
+        // Simple state machine to parse escape codes with a format of ^[[...
+        // only colors for now, with a format of ^[[\x\x or ^[[xx
+        // first digit is foreground color, second is background
+        // if 'x' is used, then default color is used.
         if (c == 0x1b) {
             state = 1;
             continue;
@@ -89,7 +95,7 @@ int32_t term_write(const void* buf, int32_t nbytes) {
 void term_key_handler(key_t key) {
     int i;
     if (key.modifiers == MOD_CTRL) {     // Non-printable; probably a control character
-        switch ((uint8_t) key.key) {
+        switch (key.key) {
             case 'l':      // C-L; clear
                 term_buf_count = 0;
                 for (i = getposy(); i > 0; i --) {
@@ -162,7 +168,7 @@ void term_key_handler(key_t key) {
                 break;
         }
     } else if (key.modifiers == MOD_ALT) { // An alt'd character
-        switch ((uint8_t) key.key) {
+        switch (key.key) {
             case 'b':      // M-B; word back
                 if (!term_curpos) {
                     break;
@@ -201,6 +207,7 @@ void term_key_handler(key_t key) {
                 }
                 break;
         }
+    // Use control characters to handle the following keys
     } else if (key.key == KEY_ENTER) {
         term_key_handler((key_t) C('m'));
     } else if (key.key == KEY_BACK) {
@@ -210,13 +217,14 @@ void term_key_handler(key_t key) {
     } else if (key.key == KEY_RIGHT) {
         term_key_handler((key_t) C('f'));
     } else if (key.key >= KEY_F1 && key.key <= KEY_F12) {
+        // STUB!
         printf("F%d", key.key - KEY_F1);
     } else {
-        addch((uint8_t) key.key);
+        addch(key.key);
     }
 }
 
-// Add a character to the line buf
+// Add a character to the line buf after the current cursor position
 void addch(uint8_t ch) {
     if (term_buf_count < TERM_BUF_SIZE) {
         int i;
@@ -235,7 +243,7 @@ void addch(uint8_t ch) {
     }
 }
 
-// delete a character to the line buf
+// delete a character from the line buf before the current cursor position
 void delch() {
     if (term_curpos > 0) {
         int i;
@@ -256,9 +264,7 @@ void delch() {
 
 void init_term() {
     cli();
-    outb(0x0A, 0x3D4);
-    outb(0x00, 0x3D5);  // Enable cursor; cursor scanline start at 0
-    outb(0x0B, 0x3D4);
-    outb(0x0F, 0x3D5);  // No cursor skew; cursor scanline ends at 15 => blocky cursors
+    outb(0x0A, 0x3D4); outb(0x00, 0x3D5);   // Enable cursor; cursor scanline start at 0
+    outb(0x0B, 0x3D4); outb(0x0F, 0x3D5);   // No cursor skew; cursor scanline ends at 15 => blocky cursors
     sti();
 }

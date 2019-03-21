@@ -7,9 +7,9 @@
 
 static uint8_t shift, ctrl, alt, caps;
 // A simple state machine for detecting 2-byte sequences
+// Other long sequences will cause undefined behaviour e.g. PrtScr & Pause break
 static uint8_t scan_state = 0;
 
-// Original code borrowed from https://stackoverflow.com/a/37635449/5264490
 key_t keyboard_map[PRINT_KEY_NUM] = {
     R(0), R(KEY_ESC), P('1'),P('2'), P('3'),P('4'), P('5'), P('6'),
     P('7'), P('8'), P('9'),P('0'), P('-'),P('='),R(KEY_BACK),R(KEY_TAB),
@@ -71,9 +71,9 @@ void kb_isr(void) {
     uint8_t status;
     uint8_t keycode;
 
-    /* Acknowledgment */
+    // Acknowledgment
     status = inb(0x64);
-    /* Lowest bit of status will be set if buffer is not empty */
+    // Lowest bit of status will be set if buffer is not empty
     if (!(status & 0x01)) {
         return;
     }
@@ -105,7 +105,7 @@ void kb_isr(void) {
                 caps ^= 1;
                 break;
 
-            case 0x57:
+            case 0x57:      // F11
                 if (pressed) {
                     term_key_handler((key_t) R(KEY_F11));
                     if (ctrl) key.modifiers |= MOD_CTRL;
@@ -115,7 +115,7 @@ void kb_isr(void) {
                 }
                 break;
 
-            case 0x58:
+            case 0x58:      // F12
                 if (pressed) {
                     term_key_handler((key_t) R(KEY_F12));
                     if (ctrl) key.modifiers |= MOD_CTRL;
@@ -125,8 +125,8 @@ void kb_isr(void) {
                 }
                 break;
 
-            default:
-                if (keycode >= 0x3B && keycode <= 0x44 && pressed) {   // F1 to F10
+            default:        // F1 to F10
+                if (keycode >= 0x3B && keycode <= 0x44 && pressed) {
                     key = (key_t) R(KEY_F1 + keycode - 0x3B);
                     if (ctrl) key.modifiers |= MOD_CTRL;
                     if (shift) key.modifiers |= MOD_SHIFT;
@@ -139,6 +139,7 @@ void kb_isr(void) {
                     return;
                 }
 
+                // Handle the keys *only* when they're pressed
                 if (!pressed) {
                     return;
                 }
@@ -166,7 +167,7 @@ void kb_isr(void) {
 
                 term_key_handler(keyboard_map[keycode]);
         }
-    } else if (scan_state == 1) {
+    } else if (scan_state == 1) {   // We've consumed a 0xE0 byte
         switch (keycode) {
             case 0x1D:      // Right control
                 ctrl = pressed;

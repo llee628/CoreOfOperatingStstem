@@ -3,12 +3,13 @@
 
 #include "types.h"
 
+// Distinguish between printable and non-printable keys
 typedef enum {
     KEY_RAW = 0,
     KEY_PRINT,
 } key_type_t;
 
-// Keys we can't directly handle, and must not use printble chars
+// Non-printable keys to be handled
 typedef enum {
     KEY_TAB = 0x80,
     KEY_ESC,
@@ -35,12 +36,14 @@ typedef enum {
     KEY_PRTSCR,
 } raw_key_t;
 
+// Type for uniform key handling
 typedef struct {
     key_type_t t;
     uint8_t modifiers;
-    raw_key_t key;
+    uint8_t key;
 } key_t;
 
+// Arbitrary bit masks
 #define MOD_CTRL    0x80
 #define MOD_SHIFT   0x40
 #define MOD_ALT     0x20
