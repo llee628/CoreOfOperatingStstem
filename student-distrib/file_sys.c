@@ -53,7 +53,6 @@ int fs_dir_read(uint8_t* buf){
 }
 
 int fs_file_read(uint8_t* buf, uint32_t length){
-    printf("File size is %d\n", inodes[cur_file.inode_num].file_size);
     int bytes_read = (int)read_data(cur_file.inode_num, num_read, buf, length);
     num_read = (int)(num_read + bytes_read);
     return bytes_read;
@@ -100,8 +99,6 @@ int32_t read_dentry_by_index(uint32_t index, dentry_t* dentry){
     /* get the relevant data to copy */
     file_type = (int32_t)(dentries[index].filetype);
     inode_num = (int32_t)(dentries[index].inode_num);
-
-    //printf("File size from file sys is %d\n", inodes[(int32_t)(dentries[index].inode_num)].file_size );
 
     /* set dentry to be a copy of the corresponding file sys dentry */
     dentry->filetype = file_type;
@@ -202,4 +199,12 @@ int32_t modified_puts(int8_t* s, uint32_t length){
 					break;
     }
     return index;
+}
+
+int32_t get_type(){
+  return cur_file.filetype;
+}
+
+int32_t get_size(){
+  return inodes[cur_file.inode_num].file_size;
 }

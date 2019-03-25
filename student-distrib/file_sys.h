@@ -56,4 +56,8 @@ uint32_t fn_length(const uint8_t* fname);
 
 int32_t modified_puts(int8_t* s, uint32_t length);
 
+int32_t get_type();
+
+int32_t get_size();
+
 #endif
