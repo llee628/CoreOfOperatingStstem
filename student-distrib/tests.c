@@ -312,6 +312,7 @@ int test_large_file(){
  * Return Value: Pass if argument is checked. Failed if
  * Function: Checks if kernel is paged correctly
  */
+ /*
 int test_rtc_set_pi_freq(){
 	int i =0;
 	// Test invalid arguments
@@ -364,18 +365,41 @@ int test_rtc_set_pi_freq(){
 	}
 	return PASS;
 }
+*/
 
+/* Function: test_rtc_read;
+ * Inputs: none
+ * Return Value: FAIL if the rtc_read do not return the appropriate value
+ * Side effect: none
+ * Description: Show the program can return from rtc_read appropriately showing that 
+ *	RTC interrupt handler is called normally
+ */
 int test_rtc_read(){
     if ( rtc_read() != 0){ return FAIL;}
     printf("rtc_read_rvalue = %d\n", rtc_read());
     return PASS;
 }
 
+
+/* Function: test_rtc_close;
+ * Inputs: none
+ * Return Value: FAIL if the rtc_close do not return the appropriate value
+ * Side effect: none
+ * Description: not doing special things so far
+ */
 int test_rtc_close(){
     if ( rtc_close() != 0){ return FAIL;}
     return PASS;
 }
 
+
+/* Function: test_rtc_write_open;
+ * Inputs: none
+ * Return Value: FAIL if the rtc_write and rtc_open do not return the appropriate value
+ * Side effect: Change the RTC frequency
+ * Description: Show rtc_write works by print '1' in different pace under different 
+ *	frequency changed by rtc_write and rtc_open
+ */
 int test_rtc_write_open(){
     int i = 0;
     // Test invalid arguments
@@ -427,7 +451,7 @@ int test_rtc_write_open(){
     
     // use a loop to prevent race condition in printing result.
     i = 0;
-    while(++i<1000){
+    while(++i<1000){	//1000 means a big number
         ;
     }
     return PASS;
