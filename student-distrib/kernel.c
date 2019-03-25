@@ -155,7 +155,6 @@ void entry(unsigned long magic, unsigned long addr) {
     i8259_init();
     /* Init the RTC */
     init_rtc();
-    //int32_t rtc_open_rvalue = rtc_open();         //uncomment it and test_interrupts() to test rtc_open
     /* Init the keyboard */
   	init_kb();
   	init_term();

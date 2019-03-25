@@ -6,7 +6,7 @@
 #include "i8259.h"
 
 
-int int_flag = 1;
+int int_flag = 0;
 static int32_t rtc_max_user_freq = 1024;
 
 void init_rtc(void) {
@@ -78,23 +78,23 @@ int rtc_set_pi_freq(int32_t freq){
 }
 
 void rtc_isr(void) {
-    int_flag = 1;
+    int_flag = 0;   //clear the flag used in rtc_read()
 	//test_interrupt_freq(0,0);
 	//test_interrupts();
     test_rtc_freq(0);
 	outb(0x0C, 0x70);
 	(void) inb(0x71);
-    int_flag = 0;
 }
 
 
 int32_t rtc_read(){
     //int prev;
     //prev = inb(0x71);
-    while (1){
-        if (int_flag == 0)
-            return 0;
+    int_flag = 1;
+    while (int_flag){
+        ;// wait until the rtc interrupt handler clear the flag
     }
+    return 0;
 }
 
 int32_t rtc_open(){

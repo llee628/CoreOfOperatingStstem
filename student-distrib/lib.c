@@ -672,9 +672,25 @@ int test_interrupt_freq(int mode, int freq){
     return end? 0:1;
 }
 
+
+/* test_rtc_freq
+ * DESCRIPTION: test different frequency by printing out '1'. The pace of
+ *  printing '1' should depend on RTC frequency.
+ *
+ * usage:
+ *      mode:
+ *          0: rtc should call this to log one interrupt
+ *          1: Test function use this to setup a test
+ *          2: Test function use this to wait for test done
+ *
+ *      set `new_test` to non-zero value to start a new test
+ * return value:
+ *      0: current test is done
+ *      1: current test is not yet finished
+ */
 int test_rtc_freq(int mode)
 {
-    const int number_per_line = 79;
+    const int number_per_line = 39;
     static int cnt = 0;
     static int end = 1;
     

@@ -11,7 +11,7 @@ extern int rtc_set_pi_freq(int32_t freq);
 // frequency = 32768 >> (rate-1) = 1024 Hz, rate = 6
 // 2 < rate < 15
 #define RTC_RATE 6
-#define RTC_OPEN_RATE   14      //set rtc frequency to 2Hz
+#define RTC_OPEN_RATE   15      //set rtc frequency to 2Hz
 
 // I/O port 
 #define RTC_ADDR_PORT 0x70 

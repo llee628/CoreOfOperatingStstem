@@ -366,26 +366,60 @@ int test_rtc_set_pi_freq(){
 }
 
 int test_rtc_read(){
-    int32_t rtc_read_rvalue = rtc_read();
-    printf("rtc_read_rvalue = %d\n", rtc_read_rvalue);
+    if ( rtc_read() != 0){ return FAIL;}
+    printf("rtc_read_rvalue = %d\n", rtc_read());
     return PASS;
 }
 
-int test_rtc_open(){
+int test_rtc_write_open(){
     int i = 0;
-    printf(" RTC present frequency:\n");
+    // Test invalid arguments
+    {
+        // test argument out of range
+        if( rtc_set_pi_freq(-1) != -1){ return FAIL;}
+        if( rtc_set_pi_freq(-100) != -1){ return FAIL;}
+        if( rtc_set_pi_freq(16384) != -1){ return FAIL;}
+        if( rtc_set_pi_freq(4096) != -1){ return FAIL;}
+        if( rtc_set_pi_freq(8192) != -1){ return FAIL;}
+        
+        // test not power of 2
+        if( rtc_set_pi_freq(0) != -1){ return FAIL;}
+        if( rtc_set_pi_freq(87) != -1){ return FAIL;}
+        if( rtc_set_pi_freq(199) != -1){ return FAIL;}
+        if( rtc_set_pi_freq(878) != -1){ return FAIL;}
+        if( rtc_set_pi_freq(2049) != -1){ return FAIL;}
+    }
+    
+    
+    // Test valid arguments
+    printf(" RTC frequency = 16HZ:\n");
+    if (rtc_set_pi_freq(16) != 0){ return FAIL;}
+    test_rtc_freq(1);
+    while (test_rtc_freq(2) != 0){
+        ;//waiting test to be finished
+    }
+    
+    printf(" RTC frequency = 8HZ:\n");
     if (rtc_set_pi_freq(8) != 0){ return FAIL;}
     test_rtc_freq(1);
     while (test_rtc_freq(2) != 0){
         ;//waiting test to be finished
     }
     
-    printf(" RTC frequency after run rtc_open()\n");
+    printf(" RTC frequency = 4HZ:\n");
+    if (rtc_set_pi_freq(4) != 0){ return FAIL;}
+    test_rtc_freq(1);
+    while (test_rtc_freq(2) != 0){
+        ;//waiting test to be finished
+    }
+    
+    printf(" RTC frequency after run rtc_open() (RTC freq = 2HZ)\n");
     if (rtc_open() != 0){ return FAIL;}
     test_rtc_freq(1);
     while ( test_rtc_freq(2) != 0){
         ;//wait test to be finished
     }
+    
     // use a loop to prevent race condition in printing result.
     i = 0;
     while(++i<1000){
@@ -418,7 +452,7 @@ void launch_tests(){
 	//TEST_OUTPUT("test_deref_above_kernel", test_deref_above_kernel());
 
 	// ------ Check point 2
-    TEST_OUTPUT("test_rtc_open", test_rtc_open());
+    //TEST_OUTPUT("test_rtc_write_open", test_rtc_write_open());
     //TEST_OUTPUT("test_rtc_read", test_rtc_read());
 	//TEST_OUTPUT("test_rtc_set_pi_freq", test_rtc_set_pi_freq());
 	//TEST_OUTPUT("test_dir_read", test_dir_read());
