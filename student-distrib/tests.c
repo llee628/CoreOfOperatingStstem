@@ -365,6 +365,37 @@ int test_rtc_set_pi_freq(){
 	return PASS;
 }
 
+int test_rtc_read(){
+    int32_t rtc_read_rvalue = rtc_read();
+    printf("rtc_read_rvalue = %d\n", rtc_read_rvalue);
+    return PASS;
+}
+
+int test_rtc_open(){
+    int i = 0;
+    printf(" RTC present frequency:\n");
+    if (rtc_set_pi_freq(8) != 0){ return FAIL;}
+    test_rtc_freq(1);
+    while (test_rtc_freq(2) != 0){
+        ;//waiting test to be finished
+    }
+    
+    printf(" RTC frequency after run rtc_open()\n");
+    if (rtc_open() != 0){ return FAIL;}
+    test_rtc_freq(1);
+    while ( test_rtc_freq(2) != 0){
+        ;//wait test to be finished
+    }
+    // use a loop to prevent race condition in printing result.
+    i = 0;
+    while(++i<1000){
+        ;
+    }
+    return PASS;
+    
+    
+}
+
 /* Checkpoint 3 tests */
 /* Checkpoint 4 tests */
 /* Checkpoint 5 tests */
@@ -387,7 +418,9 @@ void launch_tests(){
 	//TEST_OUTPUT("test_deref_above_kernel", test_deref_above_kernel());
 
 	// ------ Check point 2
-	TEST_OUTPUT("test_rtc_set_pi_freq", test_rtc_set_pi_freq());
+    TEST_OUTPUT("test_rtc_open", test_rtc_open());
+    //TEST_OUTPUT("test_rtc_read", test_rtc_read());
+	//TEST_OUTPUT("test_rtc_set_pi_freq", test_rtc_set_pi_freq());
 	//TEST_OUTPUT("test_dir_read", test_dir_read());
 	//TEST_OUTPUT("test_frame0_file", test_frame0_file());
 	//TEST_OUTPUT("test_frame1_file", test_frame1_file());

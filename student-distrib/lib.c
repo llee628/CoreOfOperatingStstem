@@ -668,5 +668,39 @@ int test_interrupt_freq(int mode, int freq){
     if( mode ==2 ){
         return end? 0:1;
     }
+    
+    return end? 0:1;
+}
+
+int test_rtc_freq(int mode)
+{
+    const int number_per_line = 79;
+    static int cnt = 0;
+    static int end = 1;
+    
+    //for rtc interrupt
+    if (!end && mode==0)
+    {
+        cnt++;
+        printf("1");
+        if (cnt > number_per_line)
+        {
+            printf("\n");
+            end = 1;
+        }
+    }
+    
+    // for test function
+    if (end && mode==1)
+    {
+        end = !end;
+        cnt = 0;
+        return 0;
+    }
+    if (mode == 2)
+    {
+        return end? 0:1;
+    }
+    
     return end? 0:1;
 }
