@@ -82,8 +82,8 @@ void rtc_isr(void) {
 	//test_interrupt_freq(0,0);
 	//test_interrupts();
     test_rtc_freq(0);
-	outb(0x0C, 0x70);
-	(void) inb(0x71);
+	outb(0x0C, RTC_ADDR_PORT);
+	(void) inb(RTC_DATA_PORT);
 }
 
 
@@ -101,10 +101,10 @@ int32_t rtc_open(){
     char prev;
     cli();
     // Set frequency to 2 Hz
-    outb(0x8A, 0x70);        // set index to register A, disable NMI
-    prev = inb(0x71);        // get initial value of register A
-    outb(0x8A, 0x70);        // reset index to A
-    outb((prev & 0xF0) | RTC_OPEN_RATE, 0x71); //write only our rate to A. Note, rate is the bottom 4 bits.
+    outb(RTC_REG_A, RTC_ADDR_PORT);        // set index to register A, disable NMI
+    prev = inb(RTC_DATA_PORT);        // get initial value of register A
+    outb(RTC_REG_A, RTC_ADDR_PORT);        // reset index to A
+    outb((prev & 0xF0) | RTC_OPEN_RATE, RTC_DATA_PORT); //write only our rate to A. Note, rate is the bottom 4 bits.
     sti();
     return 0;
 }

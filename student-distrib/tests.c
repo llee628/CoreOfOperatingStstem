@@ -371,6 +371,11 @@ int test_rtc_read(){
     return PASS;
 }
 
+int test_rtc_close(){
+    if ( rtc_close() != 0){ return FAIL;}
+    return PASS;
+}
+
 int test_rtc_write_open(){
     int i = 0;
     // Test invalid arguments
@@ -452,8 +457,9 @@ void launch_tests(){
 	//TEST_OUTPUT("test_deref_above_kernel", test_deref_above_kernel());
 
 	// ------ Check point 2
-    //TEST_OUTPUT("test_rtc_write_open", test_rtc_write_open());
-    //TEST_OUTPUT("test_rtc_read", test_rtc_read());
+    TEST_OUTPUT("test_rtc_close", test_rtc_close());
+    TEST_OUTPUT("test_rtc_write_open", test_rtc_write_open());
+    TEST_OUTPUT("test_rtc_read", test_rtc_read());
 	//TEST_OUTPUT("test_rtc_set_pi_freq", test_rtc_set_pi_freq());
 	//TEST_OUTPUT("test_dir_read", test_dir_read());
 	//TEST_OUTPUT("test_frame0_file", test_frame0_file());
