@@ -536,7 +536,7 @@ void launch_tests(){
 	//TEST_OUTPUT("test_dir_write", test_dir_write());
 	//TEST_OUTPUT("test_file_close", test_file_close());
 	//TEST_OUTPUT("test_file_write", test_file_write());
-	//TEST_OUTPUT("test_dir_read", test_dir_read());
+	TEST_OUTPUT("test_dir_read", test_dir_read());
 	//TEST_OUTPUT("test_frame0_file", test_frame0_file());
 	//TEST_OUTPUT("test_nontext_file", test_nontext_file());
 	//TEST_OUTPUT("test_large_file", test_large_file());
