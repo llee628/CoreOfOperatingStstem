@@ -27,7 +27,9 @@ void fs_init(uint32_t boot_ptr){
  */
 int fs_file_open(uint8_t* filename){
     num_read = 0;
-    read_dentry_by_name(filename, &cur_file);
+    if (read_dentry_by_name(filename, &cur_file) == -1) {
+        return -1;
+    }
     return 0;
 }
 
