@@ -97,9 +97,14 @@ void term_key_handler(key_t key) {
     if (key.modifiers == MOD_CTRL) {     // Non-printable; probably a control character
         switch (key.key) {
             case 'l':      // C-L; clear
-                term_buf_count = 0;
+                for (i = 0; i < term_curpos; i ++) {
+                    back();
+                }
                 for (i = getposy(); i > 0; i --) {
                     scroll();
+                }
+                for (i = 0; i < term_curpos; i ++) {
+                    forward();
                 }
                 break;
 
