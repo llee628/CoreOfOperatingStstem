@@ -102,7 +102,9 @@ void kb_isr(void) {
                 break;
 
             case 0x3A:      // Capslock
-                caps ^= 1;
+                if (pressed) {
+                    caps ^= 1;
+                }
                 break;
 
             case 0x57:      // F11
@@ -144,10 +146,13 @@ void kb_isr(void) {
                     return;
                 }
                 // Emit uppercase letters when only CAPS or shift is on
-                if ((caps ^ shift) 
-                        && keyboard_map[keycode].key >= 'A' 
-                        && keyboard_map[keycode].key <= 'Z') {
-                    term_key_handler(shift_map[keycode]);
+                if (caps) {
+                    if (!shift && keyboard_map[keycode].key >= 'a' 
+                               && keyboard_map[keycode].key <= 'z') {
+                        term_key_handler(shift_map[keycode]);
+                    } else {
+                        term_key_handler(keyboard_map[keycode]);
+                    }
                     break;
                 }
                 if (shift) {
