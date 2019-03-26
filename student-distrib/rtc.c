@@ -6,7 +6,7 @@
 #include "i8259.h"
 
 
-int int_flag = 0;
+int int_flag = 0;	//flag used to check if interrupt handler is called appropriately
 static int32_t rtc_max_user_freq = 1024;
 
 void init_rtc(void) {
