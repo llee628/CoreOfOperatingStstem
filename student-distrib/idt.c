@@ -36,7 +36,10 @@ void ts(void){ general_exceptions_handler("INVALID TSS"); }
 void np(void){ general_exceptions_handler("SEGMENT NOT PRESENT"); }
 void ss(void){ general_exceptions_handler("STACK-SEGMENT FAULT"); }
 void gp(void){ general_exceptions_handler("GENERAL PROTECTION"); }
-void pf(void){ general_exceptions_handler("PAGE FAULT"); }
+void pf(void *addr, int32_t error){
+    printf("PAGE FAULT: addr = %#x, error code = %#x\n", addr, error);
+    while(1);
+}
 void mf(void){ general_exceptions_handler("X87 FPU FLOATING-POINT ERROR"); }
 void ac(void){ general_exceptions_handler("ALIGNMENT CHECK"); }
 void mc(void){ general_exceptions_handler("MACHINE CHECK"); }
@@ -75,9 +78,9 @@ void idt_init(void){
 			idt[i].dpl = 0x3;
 			idt[i].present = 1;
 			// Set to Trap Gate
-			idt[i].reserved3 = 0x1;
-			idt[i].reserved2 = 0x1;
-			idt[i].reserved1 = 0x1;
+			/* idt[i].reserved3 = 0x1; */
+			/* idt[i].reserved2 = 0x1; */
+			/* idt[i].reserved1 = 0x1; */
 		} else {
 			// as instructed, the syscall privelege is set to 3
 			idt[i].dpl = 0x0;

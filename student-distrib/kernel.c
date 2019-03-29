@@ -17,7 +17,7 @@
 
 extern int32_t do_syscall(int32_t a, int32_t b, int32_t c, int32_t d);
 
-#define RUN_TESTS
+/* #define RUN_TESTS */
 
 /* Macros. */
 /* Check if the bit BIT in FLAGS is set. */
@@ -185,7 +185,12 @@ void entry(unsigned long magic, unsigned long addr) {
 #ifdef RUN_TESTS
     /* Run tests */
     launch_tests();
+#else
+	printf("syscall: %d\n", do_syscall(2, (uint8_t *) "shell", 0, 0));
 #endif
+	while (1) {
+		asm volatile ("hlt;");
+	}
 
 	uint8_t buf_size = 128;
 	char buf[buf_size];

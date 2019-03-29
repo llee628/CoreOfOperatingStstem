@@ -81,7 +81,7 @@ void rtc_isr(void) {
     int_flag = 0;   //clear the flag used in rtc_read()
 	//test_interrupt_freq(0,0);
 	//test_interrupts();
-    test_rtc_freq(0);
+    /* test_rtc_freq(0); */
 	outb(0x0C, RTC_ADDR_PORT);
 	(void) inb(RTC_DATA_PORT);
 }

@@ -136,7 +136,11 @@ _gp_isr:
 
 _pf_isr:
 	pusha
-	pop %eax 	# Pop the error code for now
+	/* pop %eax 	# Pop the error code for now */
+	mov 32(%esp), %eax
+	push %eax
+	mov %cr2, %eax
+	push %eax
 	call pf
 	popa
 	iret

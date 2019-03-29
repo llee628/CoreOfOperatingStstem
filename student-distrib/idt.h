@@ -1,6 +1,8 @@
 #ifndef _IDT_H
 #define _IDT_H
 
+#include "types.h"
+
 #define SYSCALL_IDX     0x80
 
 // Interrupt indexes
@@ -31,7 +33,7 @@ void ts(void);
 void np(void);
 void ss(void);
 void gp(void);
-void pf(void);
+void pf(void *addr, int32_t error);
 void mf(void);
 void ac(void);
 void mc(void);

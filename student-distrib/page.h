@@ -7,6 +7,9 @@
 #define ADDRESS_SHIFT       12
 #define KERNEL_ADDR   0x400000
 #define VID_MEM_ADDR      0xB8
+#define USER_PAGE_START 0x08000000
+// 4 MB = 4 * 1024 * 1024
+#define USER_PAGE_INDEX (USER_PAGE_START >> (2 + 10 + 10))
 
 /* Structure for a page table entry */
 typedef struct __attribute__ ((packed)) PTE_t{
@@ -58,5 +61,8 @@ typedef union PDE_t {
 
 /* initializes the page directory and enables paging */
 void init_page(void);
+
+PDE_t page_directory[MAX_ENTRIES];
+PTE_t vidmem_page_table[MAX_ENTRIES];
 
 #endif
