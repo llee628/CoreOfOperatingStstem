@@ -136,7 +136,11 @@ _gp_isr:
 
 _pf_isr:
 	pusha
-	pop %eax 	# Pop the error code for now
+	/* pop %eax 	# Pop the error code for now */
+	mov 32(%esp), %eax
+	push %eax
+	mov %cr2, %eax
+	push %eax
 	call pf
 	popa
 	iret
@@ -165,6 +169,18 @@ _xf_isr:
 	call xf
 	popa
 	iret
+
+# Syscall
+_syscall_isr:
+    /* pusha */
+    push %edx
+    push %ecx
+    push %ebx
+    push %eax
+    call syscall_isr
+    add $16, %esp
+    /* popa */
+    iret
 
 # Interrupt 1st level handlers
 PIC_ISR_jmp_tab:
@@ -272,8 +288,14 @@ _hd2_isr:	// 15 	Secondary ATA Hard Disk
 	push $15
     jmp PIC_ISR
 
-_syscall_isr:
-	pusha
-	call syscall_temp
-	popa
-	iret
+.globl do_syscall
+do_syscall:
+    /* pushl	%ebx */
+	movl	4(%esp),%eax
+	movl	8(%esp),%ebx
+	movl	12(%esp),%ecx
+	movl	16(%esp),%edx
+	int	$0x80
+	/* popl	%ebx */
+	ret
+

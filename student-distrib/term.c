@@ -10,11 +10,19 @@ uint8_t term_buf_count = 0;
 uint8_t term_read_done = 0;
 uint8_t term_curpos = 0;
 
+// File ops table
+file_ops_table_t term_file_ops_table = {
+    .open = term_open,
+    .read = term_read,
+    .write = term_write,
+    .close = term_close,
+};
+
 void addch(uint8_t ch);
 void delch();
 
 // Dummy open and close functions
-int32_t term_open() {
+int32_t term_open(const uint8_t *filename) {
     return 0;
 }
 
@@ -26,9 +34,11 @@ int32_t term_read(void* buf, int32_t nbytes) {
     if (!buf) {
         return -1;
     }
+    sti();
     while (!term_read_done) {
         asm volatile ("hlt");
     }
+    cli();
     putc('\n');
     term_buf[term_buf_count++] = '\n';
     int copy_count = nbytes < term_buf_count ? nbytes : term_buf_count;
@@ -97,9 +107,14 @@ void term_key_handler(key_t key) {
     if (key.modifiers == MOD_CTRL) {     // Non-printable; probably a control character
         switch (key.key) {
             case 'l':      // C-L; clear
-                term_buf_count = 0;
+                for (i = 0; i < term_curpos; i ++) {
+                    back();
+                }
                 for (i = getposy(); i > 0; i --) {
                     scroll();
+                }
+                for (i = 0; i < term_curpos; i ++) {
+                    forward();
                 }
                 break;
 

@@ -210,20 +210,52 @@ int test_deref_above_kernel(){
 
 /* Checkpoint 2 tests */
 
-int test_dir_read(){
-		//int i;
-		int bytes_read;
-		uint8_t buf[MAX_NAME_LENGTH];
+int test_dir_close(){
 		uint8_t* filename = (uint8_t*)(".");
-		printf("File name is ");
-		puts((int8_t*)filename);
-		printf("\n");
-		fs_dir_open(filename);
-		bytes_read = (int)fs_dir_read(buf);
-		printf((int8_t*)buf);
-		printf("\n");
-		printf("Bytes read is %d\n", bytes_read);
+    if ( fs_dir_close(filename) != 0){ return FAIL;}
+    printf("dir_close_value = %d\n",fs_dir_close(filename));
+    return PASS;
+}
 
+int test_dir_write(){
+		uint8_t buf[MAX_NAME_LENGTH];
+    if ( fs_dir_write(buf, MAX_NAME_LENGTH) != -1){ return FAIL;}
+    printf("dir_write_value = %d\n", fs_dir_write(buf, MAX_NAME_LENGTH));
+    return PASS;
+}
+
+int test_file_close(){
+		uint8_t* filename = (uint8_t*)(".");
+    if ( fs_file_close(filename) != 0){ return FAIL;}
+		printf("file_close_value = %d\n",fs_file_close(filename));
+    return PASS;
+}
+
+int test_file_write(){
+		uint8_t buf[MAX_NAME_LENGTH];
+    if ( fs_file_write(buf, MAX_NAME_LENGTH) != -1){ return FAIL;}
+		printf("file_write_value = %d\n", fs_file_write(buf, MAX_NAME_LENGTH));
+    return PASS;
+}
+
+int test_dir_read(){
+		uint8_t* filename = (uint8_t*)(".");
+		fs_dir_open(filename);
+		clear();
+		while(1){
+			uint8_t buf[MAX_NAME_LENGTH];
+			if(!fs_dir_read(buf))
+				break;
+			printf("File name: ");
+			modified_puts((int8_t*)buf, 32);
+			printf(", File type: ");
+			fs_file_open(buf);
+			printf("%d", get_type());
+			printf(", File size: ");
+			printf("%d", get_size());
+			printf("\n");
+			fs_file_close(buf);
+		}
 		return 1;
 }
 
@@ -231,6 +263,7 @@ int test_dir_read(){
 int test_frame0_file(){
 		int bytes_read = 0;
 		uint8_t* filename = (uint8_t*)("frame0.txt");
+		clear();
 		printf("Input file name is ");
 		puts((int8_t*)filename);
 		printf("\n");
@@ -244,7 +277,8 @@ int test_frame0_file(){
 			bytes_read = bytes_read + cur_bytes_read;
 			modified_puts((int8_t*)buf, 1000);
 		}
-		printf("Bytes read is %d\n", bytes_read);
+
+		fs_file_close(filename);
 
 		if(bytes_read == 187)
 			return PASS;
@@ -254,25 +288,26 @@ int test_frame0_file(){
 		}
 }
 
-int test_frame1_file(){
+int test_nontext_file(){
 		int bytes_read = 0;
-		uint8_t* filename = (uint8_t*)("frame1.txt");
+		uint8_t* filename = (uint8_t*)("cat");
+		clear();
 		printf("Input file name is ");
 		puts((int8_t*)filename);
 		printf("\n");
+		printf("Should show a weird character and ELF if reading the first 4 bytes correctly\n");
 		fs_file_open(filename);
 
-		while(1){
-			uint8_t buf[1000];
-			int cur_bytes_read = fs_file_read(buf, 1000);
-			if(!cur_bytes_read)
-				break;
-			bytes_read = bytes_read + cur_bytes_read;
-			modified_puts((int8_t*)buf, 1000);
-		}
-		printf("Bytes read is %d\n", bytes_read);
+		uint8_t buf[4];
+		int cur_bytes_read = fs_file_read(buf, 4);
+		bytes_read = bytes_read + cur_bytes_read;
+		printf("First four bytes are: ");
+		modified_puts((int8_t*)buf, 4);
+		printf("\n");
 
-		if(bytes_read == 174)
+		fs_file_close(filename);
+
+		if(bytes_read == 4)
 			return PASS;
 		else{
 			assertion_failure();
@@ -283,7 +318,9 @@ int test_frame1_file(){
 
 int test_large_file(){
 		int bytes_read = 0;
+		int flag = 1;
 		uint8_t* filename = (uint8_t*)("verylargetextwithverylongname.txt");
+		clear();
 		printf("Input file name is ");
 		puts((int8_t*)filename);
 		printf("\n");
@@ -292,12 +329,21 @@ int test_large_file(){
 		while(1){
 			uint8_t buf[1000];
 			int cur_bytes_read = fs_file_read(buf, 1000);
+			if(flag){
+				printf("Only printing first 42 characters of file, test will read entire file though\n");
+				printf("First 42 characters: ");
+				modified_puts((int8_t*)buf, 42);
+				printf("\n");
+				flag = 0;
+			}
 			bytes_read = bytes_read + cur_bytes_read;
-			//modified_puts((int8_t*)buf, 1000);
 			if(!cur_bytes_read)
 				break;
 		}
+		printf("Reading entire file should return 5277\n");
 		printf("Bytes read is %d\n", bytes_read);
+
+		fs_file_close(filename);
 
 		if(bytes_read == 5277)
 			return PASS;
@@ -371,15 +417,15 @@ int test_rtc_set_pi_freq(){
  * Inputs: none
  * Return Value: FAIL if the rtc_read do not return the appropriate value
  * Side effect: none
- * Description: Show the program can return from rtc_read appropriately showing that 
+ * Description: Show the program can return from rtc_read appropriately showing that
  *	RTC interrupt handler is called normally
  */
+
 int test_rtc_read(){
     if ( rtc_read() != 0){ return FAIL;}
     printf("rtc_read_rvalue = %d\n", rtc_read());
     return PASS;
 }
-
 
 /* Function: test_rtc_close;
  * Inputs: none
@@ -387,19 +433,20 @@ int test_rtc_read(){
  * Side effect: none
  * Description: not doing special things so far
  */
+
 int test_rtc_close(){
     if ( rtc_close() != 0){ return FAIL;}
     return PASS;
 }
 
-
 /* Function: test_rtc_write_open;
  * Inputs: none
  * Return Value: FAIL if the rtc_write and rtc_open do not return the appropriate value
  * Side effect: Change the RTC frequency
- * Description: Show rtc_write works by print '1' in different pace under different 
+ * Description: Show rtc_write works by print '1' in different pace under different
  *	frequency changed by rtc_write and rtc_open
  */
+
 int test_rtc_write_open(){
     int i = 0;
     // Test invalid arguments
@@ -410,7 +457,7 @@ int test_rtc_write_open(){
         if( rtc_set_pi_freq(16384) != -1){ return FAIL;}
         if( rtc_set_pi_freq(4096) != -1){ return FAIL;}
         if( rtc_set_pi_freq(8192) != -1){ return FAIL;}
-        
+
         // test not power of 2
         if( rtc_set_pi_freq(0) != -1){ return FAIL;}
         if( rtc_set_pi_freq(87) != -1){ return FAIL;}
@@ -418,8 +465,8 @@ int test_rtc_write_open(){
         if( rtc_set_pi_freq(878) != -1){ return FAIL;}
         if( rtc_set_pi_freq(2049) != -1){ return FAIL;}
     }
-    
-    
+
+
     // Test valid arguments
     printf(" RTC frequency = 16HZ:\n");
     if (rtc_set_pi_freq(16) != 0){ return FAIL;}
@@ -427,36 +474,36 @@ int test_rtc_write_open(){
     while (test_rtc_freq(2) != 0){
         ;//waiting test to be finished
     }
-    
+
     printf(" RTC frequency = 8HZ:\n");
     if (rtc_set_pi_freq(8) != 0){ return FAIL;}
     test_rtc_freq(1);
     while (test_rtc_freq(2) != 0){
         ;//waiting test to be finished
     }
-    
+
     printf(" RTC frequency = 4HZ:\n");
     if (rtc_set_pi_freq(4) != 0){ return FAIL;}
     test_rtc_freq(1);
     while (test_rtc_freq(2) != 0){
         ;//waiting test to be finished
     }
-    
+
     printf(" RTC frequency after run rtc_open() (RTC freq = 2HZ)\n");
     if (rtc_open() != 0){ return FAIL;}
     test_rtc_freq(1);
     while ( test_rtc_freq(2) != 0){
         ;//wait test to be finished
     }
-    
+
     // use a loop to prevent race condition in printing result.
     i = 0;
-    while(++i<1000){	//1000 means a big number
+    while(++i<1000){
         ;
     }
     return PASS;
-    
-    
+
+
 }
 
 /* Checkpoint 3 tests */
@@ -482,12 +529,16 @@ void launch_tests(){
 
 	// ------ Check point 2
     //TEST_OUTPUT("test_rtc_close", test_rtc_close());
-    TEST_OUTPUT("test_rtc_write_open", test_rtc_write_open());
-    TEST_OUTPUT("test_rtc_read", test_rtc_read());
+    //TEST_OUTPUT("test_rtc_write_open", test_rtc_write_open());
+    //TEST_OUTPUT("test_rtc_read", test_rtc_read());
 	//TEST_OUTPUT("test_rtc_set_pi_freq", test_rtc_set_pi_freq());
+	//TEST_OUTPUT("test_dir_close", test_dir_close());
+	//TEST_OUTPUT("test_dir_write", test_dir_write());
+	//TEST_OUTPUT("test_file_close", test_file_close());
+	//TEST_OUTPUT("test_file_write", test_file_write());
 	//TEST_OUTPUT("test_dir_read", test_dir_read());
 	//TEST_OUTPUT("test_frame0_file", test_frame0_file());
-	//TEST_OUTPUT("test_frame1_file", test_frame1_file());
+	//TEST_OUTPUT("test_nontext_file", test_nontext_file());
 	//TEST_OUTPUT("test_large_file", test_large_file());
 
 }

@@ -82,7 +82,7 @@ void rtc_isr(void) {
     rtc_interrupt_occurred = 1;
 	//test_interrupt_freq(0,0);
 	//test_interrupts();
-    test_rtc_freq(0);
+    /* test_rtc_freq(0); */
 	outb(0x0C, RTC_ADDR_PORT);
 	(void) inb(RTC_DATA_PORT);
     

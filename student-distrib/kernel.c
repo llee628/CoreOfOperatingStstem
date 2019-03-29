@@ -15,8 +15,9 @@
 #include "term.h"
 #include "file_sys.h"
 
+extern int32_t do_syscall(int32_t a, int32_t b, int32_t c, int32_t d);
 
-#define RUN_TESTS
+/* #define RUN_TESTS */
 
 /* Macros. */
 /* Check if the bit BIT in FLAGS is set. */
@@ -184,19 +185,28 @@ void entry(unsigned long magic, unsigned long addr) {
 #ifdef RUN_TESTS
     /* Run tests */
     launch_tests();
+#else
+	printf("syscall: %d\n", do_syscall(2, (uint8_t *) "shell", 0, 0));
 #endif
+	while (1) {
+		asm volatile ("hlt;");
+	}
 
 	uint8_t buf_size = 128;
 	char buf[buf_size];
 	while (1) {
-		term_write(" => ", 4);
-		uint8_t read_size = term_read(buf, buf_size);
+		/* term_write(" => ", 4); */
+		do_syscall(4, 1, (int32_t) (char *) " => ", 4);
+		uint8_t read_size = do_syscall(3, 0, (int32_t) buf, buf_size);
+		/* uint8_t read_size = term_read(buf, buf_size); */
 		printf("read_size = %d\n", read_size);
         //int32_t rtc_read_rvalue = rtc_read();
         //printf("rtc_read_rvalue = %d\n", rtc_read_rvalue); 
 		char *res = "\x1b[30buf\x1b[xx=";
-		term_write(res, strlen(res));
-		term_write(buf, read_size);
+		do_syscall(4, 1, (int32_t) (char *) res, strlen(res));
+		do_syscall(4, 1, (int32_t) (char *) buf, read_size);
+		/* term_write(res, strlen(res)); */
+		/* term_write(buf, read_size); */
 
 	}
 
