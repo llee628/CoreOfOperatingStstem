@@ -30,18 +30,18 @@ void of(void){ general_exceptions_handler("OVERFLOW"); }
 void br(void){ general_exceptions_handler("BOUND RANGE EXCEEDED"); }
 void ud(void){ general_exceptions_handler("INVALID OPCODE (UNDEFINED OPCODE)"); }
 void nm(void){ general_exceptions_handler("DEVICE NOT AVAILABLE (NO MATH COPROCESSOR)"); }
-void df(void){ general_exceptions_handler("DOUBLE FAULT"); }
+void df(int32_t errorcode){ general_exceptions_handler("DOUBLE FAULT"); }
 void cso(void){ general_exceptions_handler("COPROCESSOR SEGMENT OVERRUN"); }
-void ts(void){ general_exceptions_handler("INVALID TSS"); }
-void np(void){ general_exceptions_handler("SEGMENT NOT PRESENT"); }
-void ss(void){ general_exceptions_handler("STACK-SEGMENT FAULT"); }
-void gp(void){ general_exceptions_handler("GENERAL PROTECTION"); }
+void ts(int32_t errorcode){ general_exceptions_handler("INVALID TSS"); }
+void np(int32_t errorcode){ general_exceptions_handler("SEGMENT NOT PRESENT"); }
+void ss(int32_t errorcode){ general_exceptions_handler("STACK-SEGMENT FAULT"); }
+void gp(int32_t errorcode){ general_exceptions_handler("GENERAL PROTECTION"); }
 void pf(void *addr, int32_t error){
     printf("PAGE FAULT: addr = %#x, error code = %#x\n", addr, error);
     while(1);
 }
 void mf(void){ general_exceptions_handler("X87 FPU FLOATING-POINT ERROR"); }
-void ac(void){ general_exceptions_handler("ALIGNMENT CHECK"); }
+void ac(int32_t errorcode){ general_exceptions_handler("ALIGNMENT CHECK"); }
 void mc(void){ general_exceptions_handler("MACHINE CHECK"); }
 void xf(void){ general_exceptions_handler("SIMD FLOATING-POINT EXCEPTION"); }
 void unreachable(void){ general_exceptions_handler("\x1b""30UNREACHABLE!!!\x1b""70"); }

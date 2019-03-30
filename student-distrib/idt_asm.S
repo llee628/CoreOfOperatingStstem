@@ -5,7 +5,6 @@
 #include "idt.h"
 #include "rtc.h"
 
-.globl interrupt_handler
 .globl _de_isr
 .globl _db_isr
 .globl _nmi_isr
@@ -48,90 +47,119 @@
 _de_isr:
 	pusha
 	call de
+	mov %eax, 28(%esp)
 	popa
 	iret
 
 _db_isr:
 	pusha
 	call db
+	mov %eax, 28(%esp)
 	popa
 	iret
 
 _nmi_isr:
 	pusha
 	call nmi
+	mov %eax, 28(%esp)
 	popa
 	iret
 
 _bp_isr:
 	pusha
 	call bp
+	mov %eax, 28(%esp)
 	popa
 	iret
 
 _of_isr:
 	pusha
 	call of
+	mov %eax, 28(%esp)
 	popa
 	iret
 
 _br_isr:
 	pusha
 	call br
+	mov %eax, 28(%esp)
 	popa
 	iret
 
 _ud_isr:
 	pusha
 	call ud
+	mov %eax, 28(%esp)
 	popa
 	iret
 
 _nm_isr:
 	pusha
 	call nm
+	mov %eax, 28(%esp)
 	popa
 	iret
 
 _df_isr:
 	pusha
-	pop %eax 	# Pop the error code for now
+	mov 32(%esp), %eax 		// Copy the error code
+	push %eax
 	call df
+	add $4, %esp 			// Pop the copied error code
+	mov %eax, 28(%esp)
 	popa
+	add $4, %esp 			// Pop the orig error code
 	iret
 
 _cso_isr:
 	pusha
 	call cso
+	mov %eax, 28(%esp)
 	popa
 	iret
 
 _ts_isr:
 	pusha
-	pop %eax 	# Pop the error code for now
+	mov 32(%esp), %eax 		// Copy the error code
+	push %eax
 	call ts
+	add $4, %esp 			// Pop the copied error code
+	mov %eax, 28(%esp)
 	popa
+	add $4, %esp 			// Pop the orig error code
 	iret
 
 _np_isr:
 	pusha
-	pop %eax 	# Pop the error code for now
+	mov 32(%esp), %eax 		// Copy the error code
+	push %eax
 	call np
+	add $4, %esp 			// Pop the copied error code
+	mov %eax, 28(%esp)
 	popa
+	add $4, %esp 			// Pop the orig error code
 	iret
 
 _ss_isr:
 	pusha
-	pop %eax 	# Pop the error code for now
+	mov 32(%esp), %eax 		// Copy the error code
+	push %eax
 	call ss
+	add $4, %esp 			// Pop the copied error code
+	mov %eax, 28(%esp)
 	popa
+	add $4, %esp 			// Pop the orig error code
 	iret
 
 _gp_isr:
 	pusha
-	pop %eax 	# Pop the error code for now
+	mov 32(%esp), %eax 		// Copy the error code
+	push %eax
 	call gp
+	add $4, %esp 			// Pop the copied error code
+	mov %eax, 28(%esp)
 	popa
+	add $4, %esp 			// Pop the orig error code
 	iret
 
 _pf_isr:
@@ -142,44 +170,53 @@ _pf_isr:
 	mov %cr2, %eax
 	push %eax
 	call pf
+	mov %eax, 28(%esp)
 	popa
 	iret
 
 _mf_isr:
 	pusha
 	call mf
+	mov %eax, 28(%esp)
 	popa
 	iret
 
 _ac_isr:
 	pusha
-	pop %eax 	# Pop the error code for now
+	mov 32(%esp), %eax 		// Copy the error code
+	push %eax
 	call ac
+	add $4, %esp 			// Pop the copied error code
+	mov %eax, 28(%esp)
 	popa
+	add $4, %esp 			// Pop the orig error code
 	iret
 
 _mc_isr:
 	pusha
 	call mc
+	mov %eax, 28(%esp)
 	popa
 	iret
 
 _xf_isr:
 	pusha
 	call xf
+	mov %eax, 28(%esp)
 	popa
 	iret
 
 # Syscall
 _syscall_isr:
-    /* pusha */
+    pusha
     push %edx
     push %ecx
     push %ebx
     push %eax
     call syscall_isr
     add $16, %esp
-    /* popa */
+	mov %eax, 28(%esp)
+    popa
     iret
 
 # Interrupt 1st level handlers

@@ -121,7 +121,7 @@ int32_t syscall_execute(const uint8_t* command) {
         "movl %1, %%eax;" // User ESP
         "push %%eax;"
         "pushf;"
-        "orl $0x200, (%%esp);"      // Enable interrupt on the flags
+        /* "orl $0x200, (%%esp);"      // Enable interrupt on the flags */
         "movl %2, %%eax;" // User DS
         "push %%eax;"
         "movl %3, %%eax;" // Entry point
