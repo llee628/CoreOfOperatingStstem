@@ -5,6 +5,12 @@
 #include "lib.h"
 #include "i8259.h"
 
+file_ops_table_t rtc_file_ops_table = {
+    .open = rtc_open,
+    .read = rtc_read,
+    .write = rtc_set_pi_freq,
+    .close = rtc_close,
+};
 
 int int_flag = 0;	//flag used to check if interrupt handler is called appropriately
 static int32_t rtc_max_user_freq = 1024;
@@ -46,7 +52,7 @@ void init_rtc(void) {
  * 		0  if sucess
  *	reference :https://github.com/torvalds/linux/blob/master/drivers/char/rtc.c
  */
-int rtc_set_pi_freq(int32_t freq){
+int32_t rtc_set_pi_freq(int32_t freq){
 	int tmp, rtc_rate_val;
 	char prev;
 	//The max we can do is 8192Hz.

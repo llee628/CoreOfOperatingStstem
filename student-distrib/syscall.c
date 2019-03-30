@@ -2,6 +2,8 @@
 #include "term.h"
 #include "lib.h"
 #include "task.h"
+#include "rtc.h"
+#include "file_sys.h"
 #include "x86_desc.h"
 
 static int task_count = 1;
@@ -160,8 +162,49 @@ int32_t syscall_write(int32_t fd, const void *buf, int32_t nbytes) {
     return 0;
 }
 
+/* syscall_open
+ *  Descrption: Add file descriptor on a process's PCB
+ *  
+ *  Arg:
+ *      filename: name of the target file
+ * 
+ * 	RETURN:
+ *      file descriptor number, which is a small non-negative number,
+ *      -1 if failed.
+ */
 int32_t syscall_open(const uint8_t* filename) {
-    return 0;
+    const int8_t * rtc_filename = "/rtc";
+
+    // Copy the command itself so we have a guaranteed null-terminated string
+    int i;
+    for (i = 0; isalnum(filename[i]); i ++);
+    uint8_t fname[i + 1];
+    strncpy((int8_t *) fname, (const int8_t *) filename, i + 1);
+    fname[i] = 0;
+
+    // get current pcb
+    PCB_t *task_pcb = (PCB_t *) TASK_KSTACK_TOP(task_count);
+    if( task_pcb->open_file_count >= TASK_MAX_FILES ){
+        return -1;
+    }
+    uint8_t fd = task_pcb->open_file_count++;
+
+    //set up file descriptor
+    {
+        uint32_t flen = strlen((const int8_t*)fname);
+        if( flen==strlen(rtc_filename) &&  strncmp((const int8_t*)fname,rtc_filename, flen)==0){
+            task_pcb->open_files[fd].file_ops = &rtc_file_ops_table;
+            //TODO: virtualize RTC and set the RTC info into PCB
+
+        }else{
+            if (fs_file_open(fname) == -1){
+                return -1;
+            }else{
+                //TODO: add file operation function table here
+            }
+        }
+    }
+    return fd;
 }
 
 int32_t syscall_close(int32_t fd) {

@@ -33,14 +33,14 @@ typedef struct {
 
 typedef struct {
     // Functions for operating on the file; in order of open, read, write, close
-    void *file_ops;
+    file_ops_table_t *file_ops;
     int32_t inode;
     int32_t pos;
     int32_t flags;
 } FILE;
 
 typedef struct PCB_s {
-    FILE *open_files[TASK_MAX_FILES];
+    FILE open_files[TASK_MAX_FILES];
     uint8_t open_file_count;
     struct PCB_s *parent;
     const uint8_t *cmd_args;

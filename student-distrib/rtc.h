@@ -5,6 +5,7 @@
 #ifndef ASM
 
 #include "types.h"
+#include "task.h"
 // Set rtc periodic interruput freq
 extern int rtc_set_pi_freq(int32_t freq);
 
@@ -25,12 +26,14 @@ extern int rtc_set_pi_freq(int32_t freq);
 #define RTC_FREQ_SELECT RTC_REG_A
 
 
+file_ops_table_t rtc_file_ops_table;
 
 void rtc_isr(void);
 void init_rtc(void);
 //int32_t read (int32_t fd, void* buf, int32_t nbytes);
 int32_t rtc_read();
 int32_t rtc_open();
+int32_t rtc_set_pi_freq(int32_t freq);
 int32_t rtc_close();
 
 
