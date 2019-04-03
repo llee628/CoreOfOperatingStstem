@@ -170,39 +170,48 @@ int32_t syscall_write(int32_t fd, const void *buf, int32_t nbytes) {
  * 
  * 	RETURN:
  *      file descriptor number, which is a small non-negative number,
+ *      0 if this file is an RTC file
  *      -1 if failed.
  */
 int32_t syscall_open(const uint8_t* filename) {
-    const int8_t * rtc_filename = "/rtc";
-
-    // Copy the command itself so we have a guaranteed null-terminated string
-    int i;
-    for (i = 0; isalnum(filename[i]); i ++);
-    uint8_t fname[i + 1];
-    strncpy((int8_t *) fname, (const int8_t *) filename, i + 1);
-    fname[i] = 0;
-
-    // get current pcb
-    PCB_t *task_pcb = (PCB_t *) TASK_KSTACK_TOP(task_count);
-    if( task_pcb->open_file_count >= TASK_MAX_FILES ){
+    dentry_t dent;
+    if( read_dentry_by_name(filename, &dent) != 0 ){
         return -1;
     }
-    uint8_t fd = task_pcb->open_file_count++;
 
-    //set up file descriptor
-    {
-        uint32_t flen = strlen((const int8_t*)fname);
-        if( flen==strlen(rtc_filename) &&  strncmp((const int8_t*)fname,rtc_filename, flen)==0){
-            task_pcb->open_files[fd].file_ops = &rtc_file_ops_table;
-            //TODO: virtualize RTC and set the RTC info into PCB
-
-        }else{
-            if (fs_file_open(fname) == -1){
-                return -1;
-            }else{
-                //TODO: add file operation function table here
+    // Need a curent pid to get the right PCB
+    uint32_t cur_esp;
+    asm volatile ("movl %%esp, %0;" : "=r" (cur_esp));
+    PCB_t *task_pcb = (PCB_t *) (cur_esp & KSTACK_TOP_MASK);
+    //PCB_t *task_pcb = (PCB_t *) TASK_KSTACK_TOP(task_count);
+    rtc_info_t *rtc;
+    uint8_t fd;
+    // determine the type of file
+    switch( dent.filetype ){
+        case FILE_TYPE_RTC:
+            rtc = &(task_pcb->rtc_info);
+            // each program only can open one RTC
+            if( rtc->valid == 0 ){
+                rtc->valid = 1;
+                rtc->freq = 2;
+                rtc_set_pi_freq(rtc->freq);
+                // TODO: register this instance into the rtc struct
             }
-        }
+            return 0;
+
+        // open regular file
+        case FILE_TYPE_REG:
+            if( task_pcb->open_file_count >= TASK_MAX_FILES ){return -1;}
+            fd = task_pcb->open_file_count++;
+            task_pcb->open_files[fd].pos = 0;
+            task_pcb->open_files[fd].inode = dent.inode_num;
+            //task_pcb->open_files[fd].flags = 0;
+            
+            task_pcb->open_files[fd].file_ops = &filesys_ops_table;
+            break;
+
+        default:
+            return -1;
     }
     return fd;
 }

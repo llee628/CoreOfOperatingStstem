@@ -1,5 +1,14 @@
 #include "file_sys.h"
+#include "task.h"
 #include "lib.h"
+
+// File ops table
+file_ops_table_t filesys_ops_table = {
+    .open = fs_file_open,
+    .read = fs_file_read,
+    .write = fs_file_write,
+    .close = fs_file_close,
+};
 
 /* Global Variables */
 static uint32_t bblock_ptr;

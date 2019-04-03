@@ -16,9 +16,17 @@
 
 /* data structures are based off of those discussed in lecture 16 */
 
+file_ops_table_t filesys_ops_table;
+
+// File type fields 
+typedef int32_t filetype_t;
+#define FILE_TYPE_RTC 0
+#define FILE_TYPE_REG 1
+#define FILE_TYPE_DIR 2
+
 typedef struct dentry{
     uint8_t filename[MAX_NAME_LENGTH];
-    int32_t filetype;
+    filetype_t filetype;
     int32_t inode_num;
     uint8_t reserved[24];
 } dentry_t;
