@@ -353,66 +353,6 @@ int test_large_file(){
 		}
 }
 
-/* Function: test_deref_kernel;
- * Inputs: none
- * Return Value: Pass if argument is checked. Failed if
- * Function: Checks if kernel is paged correctly
- */
- /*
-int test_rtc_set_pi_freq(){
-	int i =0;
-	// Test invalid arguments
-	{
-		// test argument out of range
-		if( rtc_set_pi_freq(-1) != -1){ return FAIL;}
-		if( rtc_set_pi_freq(-100) != -1){ return FAIL;}
-		if( rtc_set_pi_freq(16384) != -1){ return FAIL;}
-		if( rtc_set_pi_freq(4096) != -1){ return FAIL;}
-		if( rtc_set_pi_freq(8192) != -1){ return FAIL;}
-
-		// test not power of 2
-		if( rtc_set_pi_freq(0) != -1){ return FAIL;}
-		if( rtc_set_pi_freq(87) != -1){ return FAIL;}
-		if( rtc_set_pi_freq(199) != -1){ return FAIL;}
-		if( rtc_set_pi_freq(878) != -1){ return FAIL;}
-		if( rtc_set_pi_freq(2049) != -1){ return FAIL;}
-	}
-
-	// system should have the ability to set freq more than 1024Hz.
-	// test maximum user freq
-	// not done yet
-
-	// test valid arguments
-	{
-		printf(" Test RTC in different frequency,the dot should always\
-		pace in the same speed, regarless of the frequency.\n");
-		test_interrupt_freq(1,2);
-		if( rtc_set_pi_freq(2) != 0){ return FAIL;}
-		while( test_interrupt_freq(2,0) != 0 ){
-			; // waiting test to be finshed
-		}
-
-		test_interrupt_freq(1,256);
-		if( rtc_set_pi_freq(256) != 0){ return FAIL;}
-		while( test_interrupt_freq(2,0) != 0 ){
-			; // waiting test to be finshed
-		}
-
-		test_interrupt_freq(1,1024);
-		if( rtc_set_pi_freq(1024) != 0){ return FAIL;}
-		while( test_interrupt_freq(2,0) != 0 ){
-			; // waiting test to be finshed
-		}
-		// use a loop to prevent race condition in printing result.
-		i=0;
-		while(++i<1000){
-			;
-		}
-	}
-	return PASS;
-}
-*/
-
 /* Function: test_rtc_read;
  * Inputs: none
  * Return Value: FAIL if the rtc_read do not return the appropriate value
@@ -421,11 +361,11 @@ int test_rtc_set_pi_freq(){
  *	RTC interrupt handler is called normally
  */
 
-int test_rtc_read(){
-    if ( rtc_read() != 0){ return FAIL;}
-    printf("rtc_read_rvalue = %d\n", rtc_read());
-    return PASS;
-}
+// int test_rtc_read(){
+//     if ( rtc_read() != 0){ return FAIL;}
+//     printf("rtc_read_rvalue = %d\n", rtc_read());
+//     return PASS;
+// }
 
 /* Function: test_rtc_close;
  * Inputs: none
@@ -434,12 +374,12 @@ int test_rtc_read(){
  * Description: not doing special things so far
  */
 
-int test_rtc_close(){
-    if ( rtc_close() != 0){ return FAIL;}
-    return PASS;
-}
+// int test_rtc_close(){
+//     if ( rtc_close() != 0){ return FAIL;}
+//     return PASS;
+// }
 
-/* Function: test_rtc_write_open;
+/* Function: test_rtc;
  * Inputs: none
  * Return Value: FAIL if the rtc_write and rtc_open do not return the appropriate value
  * Side effect: Change the RTC frequency
@@ -447,54 +387,99 @@ int test_rtc_close(){
  *	frequency changed by rtc_write and rtc_open
  */
 
-int test_rtc_write_open(){
+int test_rtc(){
     int i = 0;
+	rtc_info_t rtc;
+		
+	// Test open/close
+	{
+		if( rtc_open(&rtc)!=0 ){ return FAIL;}
+		if( rtc_close(&rtc) != 0){ return FAIL;}
+		if( rtc_open(NULL)==0 ){return FAIL;}
+		if( rtc_close(NULL)==0){return FAIL;}
+	}
+
     // Test invalid arguments
     {
-        // test argument out of range
-        if( rtc_set_pi_freq(-1) != -1){ return FAIL;}
-        if( rtc_set_pi_freq(-100) != -1){ return FAIL;}
-        if( rtc_set_pi_freq(16384) != -1){ return FAIL;}
-        if( rtc_set_pi_freq(4096) != -1){ return FAIL;}
-        if( rtc_set_pi_freq(8192) != -1){ return FAIL;}
+		if( rtc_open(&rtc)!=0 ){ return FAIL;}
+        
+		// test NULL argument
+		if( rtc_write_usr(NULL, 128) != -1){ return FAIL;}
+
+		// test argument out of range
+        if( rtc_write_usr(&rtc, -1) != -1){ return FAIL;}
+        if( rtc_write_usr(&rtc, -100) != -1){ return FAIL;}
+        if( rtc_write_usr(&rtc, RTC_USR_MX_FREQ<<1) != -1){ return FAIL;}
+        if( rtc_write_usr(&rtc, RTC_USR_MX_FREQ<<2) != -1){ return FAIL;}
 
         // test not power of 2
-        if( rtc_set_pi_freq(0) != -1){ return FAIL;}
-        if( rtc_set_pi_freq(87) != -1){ return FAIL;}
-        if( rtc_set_pi_freq(199) != -1){ return FAIL;}
-        if( rtc_set_pi_freq(878) != -1){ return FAIL;}
-        if( rtc_set_pi_freq(2049) != -1){ return FAIL;}
-    }
+        if( rtc_write_usr(&rtc, 0) != -1){ return FAIL;}
+        if( rtc_write_usr(&rtc, 87) != -1){ return FAIL;}
+        if( rtc_write_usr(&rtc, 199) != -1){ return FAIL;}
+        if( rtc_write_usr(&rtc, 878) != -1){ return FAIL;}
+        if( rtc_write_usr(&rtc, 2049) != -1){ return FAIL;}
+    
+
+		if( rtc_close(&rtc) != 0){ return FAIL;}
+	}
+
+	int dot_count = 256;
+
+	// Test NUL read
+	{
+		if( rtc_open(&rtc)!=0 ){ return FAIL;}
+		if (rtc_write_usr(&rtc, 64) != 0){ return FAIL;}
+		if( rtc_read(NULL) == 0){ return FAIL;}
+		if( rtc_close(&rtc) != 0){ return FAIL;}
+	}
+
+    // Test Different frequency
+	{
+		if( rtc_open(&rtc)!=0 ){ return FAIL;}
+
+		printf(" RTC frequency = 128HZ:\n");
+		if (rtc_write_usr(&rtc, 128) != 0){ return FAIL;}
+		for( i=0; i<dot_count; i++){
+			rtc_read(&rtc);
+			printf("1");
+		}
+		printf("\n");
 
 
-    // Test valid arguments
-    printf(" RTC frequency = 16HZ:\n");
-    if (rtc_set_pi_freq(16) != 0){ return FAIL;}
-    test_rtc_freq(1);
-    while (test_rtc_freq(2) != 0){
-        ;//waiting test to be finished
-    }
 
-    printf(" RTC frequency = 8HZ:\n");
-    if (rtc_set_pi_freq(8) != 0){ return FAIL;}
-    test_rtc_freq(1);
-    while (test_rtc_freq(2) != 0){
-        ;//waiting test to be finished
-    }
+		printf(" RTC frequency = 32HZ:\n");
+		if (rtc_write_usr(&rtc, 32) != 0){ return FAIL;}
+		for( i=0; i<(dot_count/4); i++){
+			rtc_read(&rtc);
+			printf("1");
+		}
+		printf("\n");
+		
 
-    printf(" RTC frequency = 4HZ:\n");
-    if (rtc_set_pi_freq(4) != 0){ return FAIL;}
-    test_rtc_freq(1);
-    while (test_rtc_freq(2) != 0){
-        ;//waiting test to be finished
-    }
+		printf(" RTC frequency = 4HZ:\n");
+		if (rtc_write_usr(&rtc, 4) != 0){ return FAIL;}
+		for( i=0; i<(dot_count/8); i++){
+			rtc_read(&rtc);
+			printf("1");
+		}
+		printf("\n");
+		
+		if( rtc_close(&rtc) != 0){ return FAIL;}
+	}
 
-    printf(" RTC frequency after run rtc_open() (RTC freq = 2HZ)\n");
-    if (rtc_open() != 0){ return FAIL;}
-    test_rtc_freq(1);
-    while ( test_rtc_freq(2) != 0){
-        ;//wait test to be finished
-    }
+	// Test RTC open default frequency
+	{
+		if( rtc_open(&rtc)!=0 ){ return FAIL;}
+
+		printf(" RTC frequency after run rtc_open() (RTC freq = 2HZ)\n");
+		for( i=0; i<8; i++){
+			rtc_read(&rtc);
+			printf("1");
+		}
+		printf("\n");
+
+		if( rtc_close(&rtc) != 0){ return FAIL;}
+	}
 
     // use a loop to prevent race condition in printing result.
     i = 0;
@@ -532,11 +517,13 @@ void launch_tests(){
   //TEST_OUTPUT("test_rtc_write_open", test_rtc_write_open());
   //TEST_OUTPUT("test_rtc_read", test_rtc_read());
 	//TEST_OUTPUT("test_rtc_set_pi_freq", test_rtc_set_pi_freq());
+	TEST_OUTPUT("test_rtc", test_rtc());
+
 	//TEST_OUTPUT("test_dir_close", test_dir_close());
 	//TEST_OUTPUT("test_dir_write", test_dir_write());
 	//TEST_OUTPUT("test_file_close", test_file_close());
 	//TEST_OUTPUT("test_file_write", test_file_write());
-	TEST_OUTPUT("test_dir_read", test_dir_read());
+	//TEST_OUTPUT("test_dir_read", test_dir_read());
 	//TEST_OUTPUT("test_frame0_file", test_frame0_file());
 	//TEST_OUTPUT("test_nontext_file", test_nontext_file());
 	//TEST_OUTPUT("test_large_file", test_large_file());

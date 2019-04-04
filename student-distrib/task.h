@@ -3,6 +3,7 @@
 
 #include "types.h"
 #include "page.h"
+#include "rtc_info.h"
 
 #define BUF_SIZE 256
 // Maximum number of files open for each task
@@ -42,6 +43,7 @@ typedef struct {
 typedef struct PCB_s {
     FILE open_files[TASK_MAX_FILES];
     uint8_t open_file_count;
+    rtc_info_t rtc_info;
     struct PCB_s *parent;
     const uint8_t *cmd_args;
     uint8_t *prev_esp;
