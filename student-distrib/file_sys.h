@@ -2,6 +2,7 @@
 #define _FILE_SYS_H
 
 #include "types.h"
+#include "task.h"
 
 #define MAX_NAME_LENGTH           32
 #define MAX_BLOCK_NUM           1023
@@ -38,7 +39,7 @@ typedef struct inode{
 
 void fs_init(uint32_t boot_ptr);
 
-int fs_file_open(uint8_t* filename);
+int fs_file_open(const uint8_t* filename);
 
 int fs_file_close(uint8_t* filename);
 
@@ -52,7 +53,7 @@ int fs_file_read(uint8_t* buf, uint32_t length);
 
 int fs_dir_write(uint8_t* buf, uint32_t length);
 
-int fs_file_write(uint8_t* buf, uint32_t length);
+int fs_file_write(const uint8_t* buf, uint32_t length);
 
 int32_t read_dentry_by_name(const uint8_t* fname, dentry_t* dentry);
 

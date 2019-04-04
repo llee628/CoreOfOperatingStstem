@@ -5,15 +5,8 @@
 #include "lib.h"
 #include "i8259.h"
 
-
-// file_ops_table_t rtc_file_ops_table = {
-//     .open = rtc_open,
-//     .read = rtc_read,
-//     .write = rtc_write_usr,
-//     .close = rtc_close,
-// };
-
 #define RTC_SYS_START_FREQ 2
+
 int int_flag = 0;	//flag used to check if interrupt handler is called appropriately
 static int32_t rtc_max_user_freq = RTC_USR_MX_FREQ;
 static rtc_info_t *cur_rtc ;

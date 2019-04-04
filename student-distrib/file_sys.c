@@ -1,5 +1,4 @@
 #include "file_sys.h"
-#include "task.h"
 #include "lib.h"
 
 // File ops table
@@ -34,7 +33,7 @@ void fs_init(uint32_t boot_ptr){
  * Return Value: 0
  * Function: Initializes the cur_file global variable to hold the current file data we want to read
  */
-int fs_file_open(uint8_t* filename){
+int fs_file_open(const uint8_t* filename){
     num_read = 0;
     if (read_dentry_by_name(filename, &cur_file) == -1) {
         return -1;
@@ -122,7 +121,7 @@ int fs_dir_write(uint8_t* buf, uint32_t length){ return -1; }
  * Return Value: -1
  * Function: Nothing
  */
-int fs_file_write(uint8_t* buf, uint32_t length){ return -1; }
+int fs_file_write(const uint8_t* buf, uint32_t length){ return -1; }
 
 /* Function: read_dentry_by_name
  * Inputs: fname - the name of the file

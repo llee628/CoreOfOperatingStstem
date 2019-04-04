@@ -189,14 +189,7 @@ int32_t syscall_open(const uint8_t* filename) {
     // determine the type of file
     switch( dent.filetype ){
         case FILE_TYPE_RTC:
-            rtc = &(task_pcb->rtc_info);
-            // each program only can open one RTC
-            if( rtc->valid == 0 ){
-                rtc->valid = 1;
-                rtc->freq = 2;
-                rtc_set_pi_freq(rtc->freq);
-                // TODO: register this instance into the rtc struct
-            }
+            rtc_open( &(task_pcb->rtc_info) );
             return 0;
 
         // open regular file
