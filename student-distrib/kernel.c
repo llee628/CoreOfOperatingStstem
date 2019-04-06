@@ -157,8 +157,8 @@ void entry(unsigned long magic, unsigned long addr) {
     /* Init the RTC */
     init_rtc();
     /* Init the keyboard */
-  	init_kb();
-  	init_term();
+	init_kb();
+    init_term();
 
     /* Init the File System */
     fs_init(bblock_addr);
@@ -201,7 +201,7 @@ void entry(unsigned long magic, unsigned long addr) {
 		/* uint8_t read_size = term_read(buf, buf_size); */
 		printf("read_size = %d\n", read_size);
         //int32_t rtc_read_rvalue = rtc_read();
-        //printf("rtc_read_rvalue = %d\n", rtc_read_rvalue); 
+        //printf("rtc_read_rvalue = %d\n", rtc_read_rvalue);
 		char *res = "\x1b[30buf\x1b[xx=";
 		do_syscall(4, 1, (int32_t) (char *) res, strlen(res));
 		do_syscall(4, 1, (int32_t) (char *) buf, read_size);

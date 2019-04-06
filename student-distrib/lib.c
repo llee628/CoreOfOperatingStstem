@@ -367,6 +367,30 @@ int8_t* itoa(uint32_t value, int8_t* buf, int32_t radix) {
     return strrev(buf);
 }
 
+/* atoi:
+ * Convert a string to a integer according to the radix given
+ * NOTE: This function does not check for radix-overflow or invalid character errors!*/
+int32_t atoi(const int8_t *buf, int32_t radix) {
+    /* static int8_t lookup[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"; */
+
+	int32_t res = 0;
+	while (*buf) {
+		int8_t digit = 0;
+		if (*buf >= '0' && *buf <= '9') {
+			digit = *buf - '0';
+		} else if (*buf >= 'a' && *buf <= 'z') {
+			digit = *buf - 'a' + 10;
+		} else if (*buf >= 'A' && *buf <= 'Z') {
+			digit = *buf - 'A' + 10;
+		}
+
+		res *= radix;
+		res += digit;
+		buf ++;
+	}
+	return res;
+}
+
 /* int8_t* strrev(int8_t* s);
  * Inputs: int8_t* s = string to reverse
  * Return Value: reversed string

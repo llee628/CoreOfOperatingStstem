@@ -25,30 +25,40 @@
 #define TASK_VIRT_PAGE_BEG (0x8000000)
 #define TASK_VIRT_PAGE_END (0x8400000)
 
+typedef enum {
+    TASK_FILE_REG,
+    TASK_FILE_DIR,
+    TASK_FILE_RTC,
+    TASK_FILE_TERM,
+} task_file_flags_type_t;
+
 typedef struct {
-    int32_t (*open)(const uint8_t* filename);
-    int32_t (*read)(void* buf, int32_t nbytes);
-    int32_t (*write)(const void* buf, int32_t nbytes);
-    int32_t (*close)();
-} file_ops_table_t;
+    task_file_flags_type_t type;
+    uint8_t used;
+} file_flags_t;
 
 typedef struct {
     // Functions for operating on the file; in order of open, read, write, close
-    file_ops_table_t *file_ops;
+    struct file_ops_table *file_ops;
     int32_t inode;
     int32_t pos;
-    int32_t flags;
+    file_flags_t flags;
 } FILE;
+
+typedef struct file_ops_table {
+    int32_t (*open)(const uint8_t* filename, FILE *file);
+    int32_t (*read)(void* buf, int32_t nbytes, FILE *file);
+    int32_t (*write)(const void* buf, int32_t nbytes, FILE *file);
+    int32_t (*close)(FILE *file);
+} file_ops_table_t;
 
 typedef struct PCB_s {
     FILE open_files[TASK_MAX_FILES];
-    uint8_t open_file_count;
     rtc_info_t rtc_info;
     struct PCB_s *parent;
     const uint8_t *cmd_args;
     uint8_t *prev_esp;
     uint8_t *prev_ebp;
-    uint8_t *prev_eip;
     uint8_t signal;
     uint8_t pid;
 } PCB_t;

@@ -2,20 +2,24 @@
 #include "lib.h"
 
 // File ops table
-file_ops_table_t filesys_ops_table = {
+file_ops_table_t fs_file_ops_table = {
     .open = fs_file_open,
     .read = fs_file_read,
     .write = fs_file_write,
     .close = fs_file_close,
 };
 
+file_ops_table_t fs_dir_ops_table = {
+    .open = fs_dir_open,
+    .read = fs_dir_read,
+    .write = fs_dir_write,
+    .close = fs_dir_close,
+};
+
 /* Global Variables */
 static uint32_t bblock_ptr;
 static inode_t* inodes;
 static dentry_t* dentries;
-static dentry_t cur_file;
-static uint32_t cur_index;
-static int num_read;
 
 /* Function: fs_init;
  * Inputs: boot_ptr - the ptr the boot block
@@ -28,71 +32,16 @@ void fs_init(uint32_t boot_ptr){
     inodes = (inode_t*)(bblock_ptr + BLOCK_SIZE);
 }
 
+
+
+// ======== File operation functions ========
 /* Function: fs_file open;
  * Inputs: filename - the file name we want to open
  * Return Value: 0
  * Function: Initializes the cur_file global variable to hold the current file data we want to read
  */
-int fs_file_open(const uint8_t* filename){
-    num_read = 0;
-    if (read_dentry_by_name(filename, &cur_file) == -1) {
-        return -1;
-    }
+int fs_file_open(const uint8_t* filename, FILE *file){
     return 0;
-}
-
-/* Function: fs_file_close;
- * Inputs: filename - the file name we want to close
- * Return Value: 0
- * Function: Resets the cur_file variable
- */
-int fs_file_close(uint8_t* filename){
-    int i;
-    cur_file.filetype = -1;
-    cur_file.inode_num = -1;
-    num_read = 0;
-
-    for(i = 0; i < MAX_NAME_LENGTH; i++)
-      cur_file.filename[i] = '\0';
-
-    return 0;
-}
-
-/* Function: fs_dir_open;
- * Inputs: filename - the file name we want to open
- * Return Value: 0
- * Function: Initializes the cur_index global variable to 0
- */
-int fs_dir_open(uint8_t* filename){
-    cur_index = 0;
-    return 0;
-}
-
-/* Function: fs_dir_open;
- * Inputs: filename - the file name we want to open
- * Return Value: 0
- * Function: Resets the cur_index global variable to 0
- */
-int fs_dir_close(uint8_t * filename){
-    cur_index = 0;
-    return 0;
-}
-
-/* Function: fs_dir_read;
- * Inputs: buf - the buffer we want to copy the file name to
- * Return Value: the length of the file name
- * Function: Reads the current directory entry
- */
-int fs_dir_read(uint8_t* buf){
-    dentry_t read_dentry;
-    int flag;
-    flag = read_dentry_by_index(cur_index, &read_dentry);
-    strncpy((int8_t*)buf, (int8_t*)read_dentry.filename, MAX_NAME_LENGTH);
-    cur_index++;
-    if(flag == 0)
-      return fn_length(buf);
-    else
-      return 0;
 }
 
 /* Function: fs_file_read;
@@ -101,10 +50,56 @@ int fs_dir_read(uint8_t* buf){
  * Return Value: The number of bytes read
  * Function: Reads the current file
  */
-int fs_file_read(uint8_t* buf, uint32_t length){
-    int bytes_read = (int)read_data(cur_file.inode_num, num_read, buf, length);
-    num_read = (int)(num_read + bytes_read);
+int fs_file_read(uint8_t* buf, uint32_t length, FILE *file){
+    int bytes_read = (int)read_data(file->inode, file->pos, buf, length);
+    file->pos += bytes_read;
     return bytes_read;
+}
+
+/* Function: fs_file_write;
+ * Inputs: buf - the buffer we want to write the file data to
+ *         length - the number of bytes we want to write
+ * Return Value: -1
+ * Function: Nothing
+ */
+int fs_file_write(const uint8_t* buf, uint32_t length, FILE *file){ return -1; }
+
+/* Function: fs_file_close;
+ * Inputs: filename - the file name we want to close
+ * Return Value: 0
+ * Function: Resets the cur_file variable
+ */
+int fs_file_close(FILE *file){
+    file->pos = 0;
+    file->inode = 0;
+    return 0;
+}
+
+
+
+// ======== Directory operation functions ========
+/* Function: fs_dir_open;
+ * Inputs: filename - the file name we want to open
+ * Return Value: 0
+ * Function: Initializes the cur_index global variable to 0
+ */
+int fs_dir_open(const uint8_t* filename, FILE *file){
+    return 0;
+}
+
+/* Function: fs_dir_read;
+ * Inputs: buf - the buffer we want to copy the file name to
+ * Return Value: the length of the file name
+ * Function: Reads the current directory entry
+ */
+int fs_dir_read(uint8_t* buf, uint32_t length, FILE *file){
+    dentry_t read_dentry;
+    if (read_dentry_by_index(file->pos, &read_dentry)) {
+        return 0;
+    }
+    strncpy((int8_t*)buf, (int8_t*)read_dentry.filename, MAX_NAME_LENGTH);
+    file->pos++;
+    return fn_length(buf);
 }
 
 /* Function: fs_dir_write;
@@ -113,15 +108,18 @@ int fs_file_read(uint8_t* buf, uint32_t length){
  * Return Value: -1
  * Function: Nothing
  */
-int fs_dir_write(uint8_t* buf, uint32_t length){ return -1; }
+int fs_dir_write(uint8_t* buf, uint32_t length, FILE *file){ return -1; }
 
-/* Function: fs_file_write;
- * Inputs: buf - the buffer we want to write the file data to
- *         length - the number of bytes we want to write
- * Return Value: -1
- * Function: Nothing
+/* Function: fs_dir_open;
+ * Inputs: filename - the file name we want to open
+ * Return Value: 0
+ * Function: Resets the cur_index global variable to 0
  */
-int fs_file_write(const uint8_t* buf, uint32_t length){ return -1; }
+int fs_dir_close(FILE *file){
+    return 0;
+}
+
+
 
 /* Function: read_dentry_by_name
  * Inputs: fname - the name of the file
@@ -133,7 +131,7 @@ int32_t read_dentry_by_name(const uint8_t* fname, dentry_t* dentry){
     /* loop index */
     int i;
     /* temp name holder */
-    int8_t cur_name[MAX_NAME_LENGTH];
+    /* int8_t cur_name[MAX_NAME_LENGTH]; */
     int32_t num_dentries = (int32_t)(*((uint32_t*)bblock_ptr));
     uint32_t name_length = fn_length(fname);
 
@@ -142,10 +140,10 @@ int32_t read_dentry_by_name(const uint8_t* fname, dentry_t* dentry){
     */
     for(i = 0; i < num_dentries; i++){
         /* set cur_name to the current dentry filename */
-        strncpy(cur_name, (int8_t*)dentries[i].filename, name_length);
+        /* strncpy(cur_name, (int8_t*)dentries[i].filename, name_length); */
         /* check to see if the names are the same
           if they are then copy the relevant values to dentry */
-        if(!strncmp(cur_name, (int8_t*)fname, name_length)){
+        if(!strncmp((int8_t*)dentries[i].filename, (int8_t*)fname, name_length)){
           (void)read_dentry_by_index(i, dentry);
           return 0;
         }
@@ -164,7 +162,7 @@ int32_t read_dentry_by_index(uint32_t index, dentry_t* dentry){
     /*local vars to hold the data we want to copy */
     int32_t file_type;
     int32_t inode_num;
-    int32_t num_dentries = (int32_t)(bblock_ptr);
+    uint32_t num_dentries = *(uint32_t*)(bblock_ptr);
     /* check if the index is within acceptable bounds */
     if(index >= num_dentries || index < 0)
         return -1;
@@ -285,26 +283,28 @@ int32_t modified_puts(int8_t* s, uint32_t length){
     while (s[index] != '\0') {
         putc(s[index]);
         index++;
-				if(index == length)
-					break;
+        if(index == length)
+            break;
     }
     return index;
 }
 
-/* Function: get_type
+/* Function: get_type TODO
  * Inputs: None
  * Return Value: - The current file's type
  * Function: Reads the current file's type
  */
 int32_t get_type(){
-  return cur_file.filetype;
+  /* return cur_file.filetype; */
+    return 0;
 }
 
-/* Function: get_size
+/* Function: get_size TODO
  * Inputs: None
  * Return Value: - The current file's size
  * Function: Reads the current file's size
  */
 int32_t get_size(){
-  return inodes[cur_file.inode_num].file_size;
+  /* return inodes[cur_file.inode_num].file_size; */
+  return 0;
 }

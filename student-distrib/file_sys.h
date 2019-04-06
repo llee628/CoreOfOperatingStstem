@@ -17,7 +17,7 @@
 
 /* data structures are based off of those discussed in lecture 16 */
 
-file_ops_table_t filesys_ops_table;
+file_ops_table_t fs_file_ops_table, fs_dir_ops_table;
 
 // File type fields 
 typedef int32_t filetype_t;
@@ -39,34 +39,23 @@ typedef struct inode{
 
 void fs_init(uint32_t boot_ptr);
 
-int fs_file_open(const uint8_t* filename);
+int fs_file_open(const uint8_t* filename, FILE *file);
+int fs_file_read(uint8_t* buf, uint32_t length, FILE *file);
+int fs_file_write(const uint8_t* buf, uint32_t length, FILE *file);
+int fs_file_close(FILE *file);
 
-int fs_file_close(uint8_t* filename);
-
-int fs_dir_open(uint8_t* filename);
-
-int fs_dir_close(uint8_t * filename);
-
-int fs_dir_read(uint8_t* buf);
-
-int fs_file_read(uint8_t* buf, uint32_t length);
-
-int fs_dir_write(uint8_t* buf, uint32_t length);
-
-int fs_file_write(const uint8_t* buf, uint32_t length);
+int fs_dir_open(const uint8_t* filename, FILE *file);
+int fs_dir_read(uint8_t* buf, uint32_t length, FILE *file);
+int fs_dir_write(uint8_t* buf, uint32_t length, FILE *file);
+int fs_dir_close(FILE *file);
 
 int32_t read_dentry_by_name(const uint8_t* fname, dentry_t* dentry);
-
 int32_t read_dentry_by_index(uint32_t index, dentry_t* dentry);
-
 int32_t read_data(int32_t inode_num, uint32_t offset, uint8_t* buf, uint32_t length);
 
 uint32_t fn_length(const uint8_t* fname);
-
 int32_t modified_puts(int8_t* s, uint32_t length);
-
 int32_t get_type();
-
 int32_t get_size();
 
 #endif

@@ -26,9 +26,7 @@ int32_t syscall_isr(int32_t callnum, int32_t a, int32_t b, int32_t c) {
 
 int32_t syscall_halt(uint8_t status) {
     // Revert info from PCB
-    uint32_t cur_esp;
-    asm volatile ("movl %%esp, %0;" : "=r" (cur_esp));
-    PCB_t *task_pcb = (PCB_t *) (cur_esp & KSTACK_TOP_MASK);
+    PCB_t *task_pcb = get_cur_pcb();
     // TODO close files
     PCB_t *parent_pcb = task_pcb->parent;
     if (parent_pcb) {
@@ -84,15 +82,55 @@ int32_t syscall_execute(const uint8_t* command) {
     filename[i] = 0;
 
     int32_t entry_addr;
-    // 3 & 4. Load task and setup paging
-    if (load_task(filename, task_count, &entry_addr) == -1) {
+    // 3. Check executable format and load task image
+    FILE f;
+    if (fs_file_open(filename, &f) == -1) {
         return -1;
     }
 
+    uint8_t buf[BUF_SIZE];
+    int32_t read_size = fs_file_read(buf, BUF_SIZE, &f);
+    // Check for ELF magic
+    if (buf[0] != 0x7F || buf[1] != 'E' || buf[2] != 'L' || buf[3] != 'F') {
+        fs_file_close(filename);
+        return -1;
+    }
+
+    entry_addr = *((int32_t *) (buf + 24));
+    // Check that the entry address is after the image starting point
+    if (entry_addr < TASK_IMG_START_ADDR) {
+        fs_file_close(filename);
+        return -1;
+    }
+
+    // 4. Setup paging; Set task's target page address
+    page_directory[USER_PAGE_INDEX].page_PDE.page_addr = TASK_PAGE_INDEX(task_count);
+    // Reload the TLB
+    asm volatile(
+            "movl %%cr3, %%eax;"
+            " movl %0, %%cr3; "
+            :
+            : "r"(page_directory)
+            :"%eax"
+            );
+
+    // Copy the rest of the image
+    uint8_t *task_img_cur = (uint8_t *) TASK_IMG_START_ADDR;
+    memcpy(task_img_cur, buf, read_size);
+    task_img_cur += read_size;
+    while ((read_size = fs_file_read(buf, BUF_SIZE, &f)) > 0) {
+        memcpy(task_img_cur, buf, read_size);
+        task_img_cur += read_size;
+    }
+
+    fs_file_close(&f);
+    return 0;
+
     // 5. Setup PCB
     PCB_t *task_pcb = (PCB_t *) TASK_KSTACK_TOP(task_count);
-    // TODO Open files
-    task_pcb->open_file_count = 2;
+    for (int i = 2; i < MAX_FILE_NUM; i ++) {
+        task_pcb->open_files[i].flags.used = 0;
+    }
     task_pcb->cmd_args = args;
     task_pcb->signal = 0;
     asm volatile ("movl %%ebp, %0;" : "=r" (task_pcb->prev_ebp));
@@ -103,12 +141,10 @@ int32_t syscall_execute(const uint8_t* command) {
     } else {
         task_pcb->parent = NULL;
     }
-    task_pcb->prev_eip = 0;     // TODO confirm the label works
     task_pcb->pid = task_count;
 
     tss.esp0 = TASK_KSTACK_BOT(task_count);
     tss.ss0 = KERNEL_DS;
-    //ltr(KERNEL_TSS);        // TODO how to reload Task Register?
 
     task_count ++;
 
@@ -123,7 +159,6 @@ int32_t syscall_execute(const uint8_t* command) {
         "movl %1, %%eax;" // User ESP
         "push %%eax;"
         "pushf;"
-        /* "orl $0x200, (%%esp);"      // Enable interrupt on the flags */
         "movl %2, %%eax;" // User DS
         "push %%eax;"
         "movl %3, %%eax;" // Entry point
@@ -142,13 +177,20 @@ int32_t syscall_execute(const uint8_t* command) {
 
 int32_t syscall_read(int32_t fd, void *buf, int32_t nbytes) {
     if (fd == 0) {
-        return term_read(buf, nbytes);
+        return term_read(buf, nbytes, NULL);
     }
 
     if (fd == 1) {
         return -1;
     }
-    return 0;
+
+    if (fd >= TASK_MAX_FILES) {
+        return -1;
+    }
+
+    PCB_t *task_pcb = get_cur_pcb();
+    return task_pcb->open_files[fd].file_ops->read(
+            buf, nbytes, &task_pcb->open_files[fd]);
 }
 
 int32_t syscall_write(int32_t fd, const void *buf, int32_t nbytes) {
@@ -157,17 +199,24 @@ int32_t syscall_write(int32_t fd, const void *buf, int32_t nbytes) {
     }
 
     if (fd == 1) {
-        return term_write(buf, nbytes);
+        return term_write(buf, nbytes, NULL);
     }
-    return 0;
+
+    if (fd >= TASK_MAX_FILES) {
+        return -1;
+    }
+
+    PCB_t *task_pcb = get_cur_pcb();
+    return task_pcb->open_files[fd].file_ops->write(
+            buf, nbytes, &task_pcb->open_files[fd]);
 }
 
 /* syscall_open
  *  Descrption: Add file descriptor on a process's PCB
- *  
+ *
  *  Arg:
  *      filename: name of the target file
- * 
+ *
  * 	RETURN:
  *      file descriptor number, which is a small non-negative number,
  *      0 if this file is an RTC file
@@ -180,12 +229,8 @@ int32_t syscall_open(const uint8_t* filename) {
     }
 
     // Need a curent pid to get the right PCB
-    uint32_t cur_esp;
-    asm volatile ("movl %%esp, %0;" : "=r" (cur_esp));
-    PCB_t *task_pcb = (PCB_t *) (cur_esp & KSTACK_TOP_MASK);
-    //PCB_t *task_pcb = (PCB_t *) TASK_KSTACK_TOP(task_count);
-    rtc_info_t *rtc;
-    uint8_t fd;
+    PCB_t *task_pcb = get_cur_pcb();
+    int i;
     // determine the type of file
     switch( dent.filetype ){
         case FILE_TYPE_RTC:
@@ -194,19 +239,25 @@ int32_t syscall_open(const uint8_t* filename) {
 
         // open regular file
         case FILE_TYPE_REG:
-            if( task_pcb->open_file_count >= TASK_MAX_FILES ){return -1;}
-            fd = task_pcb->open_file_count++;
-            task_pcb->open_files[fd].pos = 0;
-            task_pcb->open_files[fd].inode = dent.inode_num;
-            //task_pcb->open_files[fd].flags = 0;
-            
-            task_pcb->open_files[fd].file_ops = &filesys_ops_table;
-            break;
-
-        default:
-            return -1;
+        case FILE_TYPE_DIR:
+            for (i = 2; i < TASK_MAX_FILES; i ++) {
+                if (!(task_pcb->open_files[i].flags.used)) {
+                    task_pcb->open_files[i].pos = 0;
+                    task_pcb->open_files[i].inode = dent.inode_num;
+                    if (dent.filetype == FILE_TYPE_REG) {
+                        task_pcb->open_files[i].file_ops = &fs_file_ops_table;
+                        task_pcb->open_files[i].flags.type = TASK_FILE_REG;
+                    } else {
+                        task_pcb->open_files[i].file_ops = &fs_dir_ops_table;
+                        task_pcb->open_files[i].flags.type = TASK_FILE_DIR;
+                    }
+                    task_pcb->open_files[i].flags.used = 1;
+                    return i;
+                }
+            }
+            return -1;  // No usable fd
     }
-    return fd;
+    return -1;
 }
 
 int32_t syscall_close(int32_t fd) {
@@ -227,4 +278,10 @@ int32_t syscall_set_handler(int32_t signum, void* handler) {
 
 int32_t syscall_sigreturn(void) {
     return 0;
+}
+
+PCB_t *get_cur_pcb() {
+    uint32_t cur_esp;
+    asm volatile ("movl %%esp, %0;" : "=r" (cur_esp));
+    return cur_esp & KSTACK_TOP_MASK;
 }
