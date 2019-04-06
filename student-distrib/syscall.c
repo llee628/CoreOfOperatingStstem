@@ -71,14 +71,17 @@ int32_t syscall_execute(const int8_t* command) {
         while (*args == ' ') {
             args ++;
         }
-    } else {
-        args = NULL;
     }
 
     // 2. Copy the command itself so we have a guaranteed null-terminated string
+    // Also copy the arguments
     int8_t filename[i + 1];
-    strncpy((int8_t *) filename, (const int8_t *) command, i + 1);
+    uint8_t arg_len = strlen(args);
+    int8_t copied_args[arg_len + 1];
+    strncpy(filename, command, i + 1);
+    strncpy(copied_args, args, arg_len + 1);
     filename[i] = 0;
+    copied_args[arg_len] = 0;
 
     int32_t entry_addr;
     // 3. Check executable format and load task image
@@ -126,10 +129,10 @@ int32_t syscall_execute(const int8_t* command) {
 
     // 5. Setup PCB
     PCB_t *task_pcb = (PCB_t *) TASK_KSTACK_TOP(task_count);
-    for (i = 2; i < MAX_FILE_NUM; i ++) {
+    for (i = 2; i < TASK_MAX_FILES; i ++) {
         task_pcb->open_files[i].flags.used = 0;
     }
-    task_pcb->cmd_args = args;
+    task_pcb->cmd_args = copied_args;
     task_pcb->signal = 0;
     asm volatile ("movl %%ebp, %0;" : "=r" (task_pcb->prev_ebp));
     asm volatile ("movl %%esp, %0;" : "=r" (task_pcb->prev_esp));
@@ -173,7 +176,7 @@ int32_t syscall_execute(const int8_t* command) {
     return retval;
 }
 
-int32_t syscall_read(int32_t fd, void *buf, int32_t nbytes) {
+int32_t syscall_read(int32_t fd, void *buf, uint32_t nbytes) {
     if (fd == 0) {
         return term_read(buf, nbytes, NULL);
     }
@@ -187,11 +190,14 @@ int32_t syscall_read(int32_t fd, void *buf, int32_t nbytes) {
     }
 
     PCB_t *task_pcb = get_cur_pcb();
+    if (!task_pcb->open_files[fd].flags.used) {
+        return -1;
+    }
     return task_pcb->open_files[fd].file_ops->read(
             buf, nbytes, &task_pcb->open_files[fd]);
 }
 
-int32_t syscall_write(int32_t fd, const void *buf, int32_t nbytes) {
+int32_t syscall_write(int32_t fd, const void *buf, uint32_t nbytes) {
     if (fd == 0) {
         return -1;
     }
@@ -205,6 +211,9 @@ int32_t syscall_write(int32_t fd, const void *buf, int32_t nbytes) {
     }
 
     PCB_t *task_pcb = get_cur_pcb();
+    if (!task_pcb->open_files[fd].flags.used) {
+        return -1;
+    }
     return task_pcb->open_files[fd].file_ops->write(
             buf, nbytes, &task_pcb->open_files[fd]);
 }
@@ -230,29 +239,41 @@ int32_t syscall_open(const int8_t* filename) {
     PCB_t *task_pcb = get_cur_pcb();
     int i;
     // determine the type of file
-    switch( dent.filetype ){
-        case FILE_TYPE_RTC:
-            return rtc_open( &(task_pcb->rtc_info) );
-
-        // open regular file
-        case FILE_TYPE_REG:
-        case FILE_TYPE_DIR:
-            for (i = 2; i < TASK_MAX_FILES; i ++) {
-                if (!(task_pcb->open_files[i].flags.used)) {
-                    fs_open(filename, &task_pcb->open_files[i]);
-                    return i;
-                }
+    for (i = 2; i < TASK_MAX_FILES; i ++) {
+        if (!(task_pcb->open_files[i].flags.used)) {
+            int32_t retval;
+            if (dent.filetype == FILE_TYPE_RTC) {
+                retval = rtc_open(filename, &task_pcb->open_files[i]);
+            } else {
+                retval = fs_open(filename, &task_pcb->open_files[i]);
             }
-            return -1;  // No usable fd
+            if (retval) {
+                return -1;
+            }
+            return i;
+        }
     }
     return -1;
 }
 
 int32_t syscall_close(int32_t fd) {
+    PCB_t *task_pcb = get_cur_pcb();
+    if (!task_pcb->open_files[fd].flags.used) {
+        return -1;
+    }
+
+    if (task_pcb->open_files[fd].file_ops->close(&task_pcb->open_files[fd])) {
+        return -1;
+    }
     return 0;
 }
 
-int32_t syscall_getargs(uint8_t* buf, int32_t nbytes) {
+int32_t syscall_getargs(int8_t* buf, uint32_t nbytes) {
+    if (!buf) {
+        return -1;
+    }
+    PCB_t *task_pcb = get_cur_pcb();
+    strcpy(buf, task_pcb->cmd_args);
     return 0;
 }
 
