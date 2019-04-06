@@ -22,11 +22,11 @@ file_ops_table_t fs_file_ops_table, fs_dir_ops_table;
 // File type fields 
 typedef int32_t filetype_t;
 #define FILE_TYPE_RTC 0
-#define FILE_TYPE_REG 1
-#define FILE_TYPE_DIR 2
+#define FILE_TYPE_DIR 1
+#define FILE_TYPE_REG 2
 
 typedef struct dentry{
-    uint8_t filename[MAX_NAME_LENGTH];
+    int8_t filename[MAX_NAME_LENGTH];
     filetype_t filetype;
     int32_t inode_num;
     uint8_t reserved[24];
@@ -38,22 +38,23 @@ typedef struct inode{
 } inode_t;
 
 void fs_init(uint32_t boot_ptr);
+int32_t fs_open(const int8_t *filename, FILE *file);
 
-int fs_file_open(const uint8_t* filename, FILE *file);
-int fs_file_read(uint8_t* buf, uint32_t length, FILE *file);
-int fs_file_write(const uint8_t* buf, uint32_t length, FILE *file);
+int fs_file_open(const int8_t* filename, FILE *file);
+int fs_file_read(int8_t* buf, uint32_t length, FILE *file);
+int fs_file_write(const int8_t* buf, uint32_t length, FILE *file);
 int fs_file_close(FILE *file);
 
-int fs_dir_open(const uint8_t* filename, FILE *file);
-int fs_dir_read(uint8_t* buf, uint32_t length, FILE *file);
-int fs_dir_write(uint8_t* buf, uint32_t length, FILE *file);
+int fs_dir_open(const int8_t* filename, FILE *file);
+int fs_dir_read(int8_t* buf, uint32_t length, FILE *file);
+int fs_dir_write(const int8_t* buf, uint32_t length, FILE *file);
 int fs_dir_close(FILE *file);
 
-int32_t read_dentry_by_name(const uint8_t* fname, dentry_t* dentry);
+int32_t read_dentry_by_name(const int8_t* fname, dentry_t* dentry);
 int32_t read_dentry_by_index(uint32_t index, dentry_t* dentry);
-int32_t read_data(int32_t inode_num, uint32_t offset, uint8_t* buf, uint32_t length);
+int32_t read_data(int32_t inode_num, uint32_t offset, int8_t* buf, uint32_t length);
 
-uint32_t fn_length(const uint8_t* fname);
+uint32_t fn_length(const int8_t* fname);
 int32_t modified_puts(int8_t* s, uint32_t length);
 int32_t get_type();
 int32_t get_size();

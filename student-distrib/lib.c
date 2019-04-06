@@ -590,7 +590,7 @@ void* memmove(void* dest, const void* src, uint32_t n) {
 int32_t strncmp(const int8_t* s1, const int8_t* s2, uint32_t n) {
     int32_t i;
     for (i = 0; i < n; i++) {
-        if ((s1[i] != s2[i]) || (s1[i] == '\0') /* || s2[i] == '\0' */) {
+        if ((s1[i] != s2[i]) || (s1[i] == '\0') || s2[i] == '\0' ) {
 
             /* The s2[i] == '\0' is unnecessary because of the short-circuit
              * semantics of 'if' expressions in C.  If the first expression

@@ -46,9 +46,9 @@ typedef struct {
 } FILE;
 
 typedef struct file_ops_table {
-    int32_t (*open)(const uint8_t* filename, FILE *file);
-    int32_t (*read)(void* buf, int32_t nbytes, FILE *file);
-    int32_t (*write)(const void* buf, int32_t nbytes, FILE *file);
+    int32_t (*open)(const int8_t* filename, FILE *file);
+    int32_t (*read)(int8_t* buf, uint32_t nbytes, FILE *file);
+    int32_t (*write)(const int8_t* buf, uint32_t nbytes, FILE *file);
     int32_t (*close)(FILE *file);
 } file_ops_table_t;
 
@@ -56,13 +56,11 @@ typedef struct PCB_s {
     FILE open_files[TASK_MAX_FILES];
     rtc_info_t rtc_info;
     struct PCB_s *parent;
-    const uint8_t *cmd_args;
+    const int8_t *cmd_args;
     uint8_t *prev_esp;
     uint8_t *prev_ebp;
     uint8_t signal;
     uint8_t pid;
 } PCB_t;
-
-int32_t load_task(uint8_t *filename, int32_t task_count, int32_t *entry_addr);
 
 #endif /* ifndef _TASK_H_ */

@@ -26,7 +26,7 @@ void addch(uint8_t ch);
 void delch();
 
 // Dummy open and close functions
-int32_t term_open(const uint8_t *filename) {
+int32_t term_open(const int8_t *filename, FILE *file) {
     return 0;
 }
 
@@ -34,7 +34,7 @@ int32_t term_close() {
     return 0;
 }
 
-int32_t term_read(void* buf, int32_t nbytes, FILE *file) {
+int32_t term_read(int8_t* buf, uint32_t nbytes, FILE *file) {
     if (!buf) {
         return -1;
     }
@@ -148,7 +148,7 @@ int8_t esc_parse(uint8_t c) {
     return 1;
 }
 
-int32_t term_write(const void* buf, int32_t nbytes, FILE *file) {
+int32_t term_write(const int8_t* buf, uint32_t nbytes, FILE *file) {
     int i;
     for (i = 0; i < nbytes; i ++) {
         uint8_t c = ((char * ) buf)[i];

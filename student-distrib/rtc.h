@@ -7,6 +7,7 @@
 
 #include "types.h"
 #include "task.h"
+#include "rtc_info.h"
 
 // frequency = 32768 >> (rate-1) = 1024 Hz, rate = 6
 // 2 < rate < 15
@@ -27,16 +28,6 @@
 #define RTC_SYS_MX_FREQ 8192
 #define RTC_USR_MX_FREQ 1024
 #define RTC_USR_DEFAULT_FREQ 2
-
-typedef struct rtc_info_s {
-	int valid;
-	int32_t freq;
-
-	// internal data
-	int waiting;
-	int32_t sys_int_freq;
-	int32_t target_int;
-} rtc_info_t;
 
 file_ops_table_t rtc_file_ops_table;
 

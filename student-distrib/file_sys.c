@@ -33,6 +33,24 @@ void fs_init(uint32_t boot_ptr){
 }
 
 
+int32_t fs_open(const int8_t *filename, FILE *file) {
+    dentry_t dent;
+    if( read_dentry_by_name(filename, &dent) != 0 ){
+        return -1;
+    }
+
+    file->pos = 0;
+    file->inode = dent.inode_num;
+    if (dent.filetype == FILE_TYPE_REG) {
+        file->file_ops = &fs_file_ops_table;
+        file->flags.type = TASK_FILE_REG;
+    } else {
+        file->file_ops = &fs_dir_ops_table;
+        file->flags.type = TASK_FILE_DIR;
+    }
+    file->flags.used = 1;
+    return 0;
+}
 
 // ======== File operation functions ========
 /* Function: fs_file open;
@@ -40,7 +58,7 @@ void fs_init(uint32_t boot_ptr){
  * Return Value: 0
  * Function: Initializes the cur_file global variable to hold the current file data we want to read
  */
-int fs_file_open(const uint8_t* filename, FILE *file){
+int fs_file_open(const int8_t* filename, FILE *file){
     return 0;
 }
 
@@ -50,7 +68,7 @@ int fs_file_open(const uint8_t* filename, FILE *file){
  * Return Value: The number of bytes read
  * Function: Reads the current file
  */
-int fs_file_read(uint8_t* buf, uint32_t length, FILE *file){
+int fs_file_read(int8_t* buf, uint32_t length, FILE *file){
     int bytes_read = (int)read_data(file->inode, file->pos, buf, length);
     file->pos += bytes_read;
     return bytes_read;
@@ -62,7 +80,7 @@ int fs_file_read(uint8_t* buf, uint32_t length, FILE *file){
  * Return Value: -1
  * Function: Nothing
  */
-int fs_file_write(const uint8_t* buf, uint32_t length, FILE *file){ return -1; }
+int fs_file_write(const int8_t* buf, uint32_t length, FILE *file){ return -1; }
 
 /* Function: fs_file_close;
  * Inputs: filename - the file name we want to close
@@ -83,7 +101,7 @@ int fs_file_close(FILE *file){
  * Return Value: 0
  * Function: Initializes the cur_index global variable to 0
  */
-int fs_dir_open(const uint8_t* filename, FILE *file){
+int fs_dir_open(const int8_t* filename, FILE *file){
     return 0;
 }
 
@@ -92,7 +110,7 @@ int fs_dir_open(const uint8_t* filename, FILE *file){
  * Return Value: the length of the file name
  * Function: Reads the current directory entry
  */
-int fs_dir_read(uint8_t* buf, uint32_t length, FILE *file){
+int fs_dir_read(int8_t* buf, uint32_t length, FILE *file){
     dentry_t read_dentry;
     if (read_dentry_by_index(file->pos, &read_dentry)) {
         return 0;
@@ -108,7 +126,7 @@ int fs_dir_read(uint8_t* buf, uint32_t length, FILE *file){
  * Return Value: -1
  * Function: Nothing
  */
-int fs_dir_write(uint8_t* buf, uint32_t length, FILE *file){ return -1; }
+int fs_dir_write(const int8_t* buf, uint32_t length, FILE *file){ return -1; }
 
 /* Function: fs_dir_open;
  * Inputs: filename - the file name we want to open
@@ -127,13 +145,16 @@ int fs_dir_close(FILE *file){
  * Return Value: -1 if failed, 0 if success
  * Function: Copies the data to the dentry variable
  */
-int32_t read_dentry_by_name(const uint8_t* fname, dentry_t* dentry){
+int32_t read_dentry_by_name(const int8_t* fname, dentry_t* dentry){
     /* loop index */
     int i;
     /* temp name holder */
     /* int8_t cur_name[MAX_NAME_LENGTH]; */
     int32_t num_dentries = (int32_t)(*((uint32_t*)bblock_ptr));
-    uint32_t name_length = fn_length(fname);
+    uint32_t name_length;
+    if (!(name_length = fn_length(fname))) {
+        return -1;
+    }
 
     /* loops through the dentries, skip the first one because that refers to the
       directory itself
@@ -143,7 +164,7 @@ int32_t read_dentry_by_name(const uint8_t* fname, dentry_t* dentry){
         /* strncpy(cur_name, (int8_t*)dentries[i].filename, name_length); */
         /* check to see if the names are the same
           if they are then copy the relevant values to dentry */
-        if(!strncmp((int8_t*)dentries[i].filename, (int8_t*)fname, name_length)){
+        if(!strncmp((int8_t*)dentries[i].filename, (int8_t*)fname, MAX_NAME_LENGTH)){
           (void)read_dentry_by_index(i, dentry);
           return 0;
         }
@@ -187,7 +208,7 @@ int32_t read_dentry_by_index(uint32_t index, dentry_t* dentry){
  * Return Value: The number of bytes read
  * Function: Copies the data to the buffer
  */
-int32_t read_data(int32_t inode_num, uint32_t offset, uint8_t* buf, uint32_t length){
+int32_t read_data(int32_t inode_num, uint32_t offset, int8_t* buf, uint32_t length){
     /* for loop index */
     int i;
     /* local variables used to find byte data*/
@@ -198,7 +219,7 @@ int32_t read_data(int32_t inode_num, uint32_t offset, uint8_t* buf, uint32_t len
     uint32_t cur_byte;
     int starting_index;
     int32_t actual_len;
-    uint8_t* cur_buf_pos;
+    int8_t* cur_buf_pos;
     int32_t num_bytes = 0;
 
     /* get the number of inodes */
@@ -262,7 +283,7 @@ int32_t read_data(int32_t inode_num, uint32_t offset, uint8_t* buf, uint32_t len
  * Return Value: - the length of the file's name
  * Function: Modified version of strlen to account for names that don't end with the null character
  */
-uint32_t fn_length(const uint8_t* fname){
+uint32_t fn_length(const int8_t* fname){
   uint32_t len = 0;
   while (fname[len] != '\0'){
       len++;

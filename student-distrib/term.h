@@ -17,9 +17,9 @@ file_ops_table_t term_file_ops_table;
 
 void term_key_handler(key_t key);
 void init_term();
-int32_t term_write(const void* buf, int32_t nbytes, FILE *file);
-int32_t term_read(void* buf, int32_t nbytes, FILE *file);
-int32_t term_open(const uint8_t *filename);
+int32_t term_write(const int8_t* buf, uint32_t nbytes, FILE *file);
+int32_t term_read(int8_t* buf, uint32_t nbytes, FILE *file);
+int32_t term_open(const int8_t *filename, FILE *file);
 int32_t term_close();
 
 #endif
