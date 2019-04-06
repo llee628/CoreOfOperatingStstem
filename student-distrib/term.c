@@ -9,6 +9,10 @@ char term_buf[TERM_BUF_SIZE_W_NL];
 uint8_t term_buf_count = 0;
 uint8_t term_read_done = 0;
 uint8_t term_curpos = 0;
+// Echo the character to the screen
+uint8_t term_echo = 1;
+// Non-canonical operation; buffer the inputs
+uint8_t term_nocanon = 1;
 
 // File ops table
 file_ops_table_t term_file_ops_table = {
@@ -22,7 +26,7 @@ void addch(uint8_t ch);
 void delch();
 
 // Dummy open and close functions
-int32_t term_open(const uint8_t *filename) {
+int32_t term_open(const int8_t *filename, FILE *file) {
     return 0;
 }
 
@@ -30,79 +34,138 @@ int32_t term_close() {
     return 0;
 }
 
-int32_t term_read(void* buf, int32_t nbytes) {
+int32_t term_read(int8_t* buf, uint32_t nbytes, FILE *file) {
     if (!buf) {
         return -1;
     }
-    sti();
-    while (!term_read_done) {
-        asm volatile ("hlt");
+    if (term_nocanon) {
+        sti();
+        while (!term_read_done) {
+            asm volatile ("hlt");
+        }
+        cli();
+        if (term_echo) {
+            putc('\n');
+        }
+        term_buf[term_buf_count++] = '\n';
+        int copy_count = nbytes < term_buf_count ? nbytes : term_buf_count;
+        memcpy(buf, term_buf, copy_count);
+        term_buf_count = 0;
+        term_read_done = 0;
+        term_curpos = 0;
+        return copy_count;
+    } else {
+        while (!term_buf_count) {
+            asm volatile ("hlt");
+        }
+        memcpy(buf, term_buf, 1);
+        term_curpos = 1;
+        delch();
+        return 1;
     }
-    cli();
-    putc('\n');
-    term_buf[term_buf_count++] = '\n';
-    int copy_count = nbytes < term_buf_count ? nbytes : term_buf_count;
-    memcpy(buf, term_buf, copy_count);
-    term_buf_count = 0;
-    term_read_done = 0;
-    term_curpos = 0;
-    return copy_count;
 }
 
-int32_t term_write(const void* buf, int32_t nbytes) {
+void esc_funcs(uint8_t f, uint8_t *args, uint8_t arg_len) {
+    uint8_t setting = 0;
+    switch (f) {
+        // Foreground color
+        case 'f':
+            if (arg_len) {
+                setattr((getattr() & 0xF0) | (args[0] & 0x0F));
+            }
+            break;
+
+        // Background color
+        case 'b':
+            if (arg_len) {
+                setattr((getattr() & 0x0F) | (args[0] & 0xF0));
+            }
+            break;
+
+        // Set cursor position
+        case 'p':
+            if (arg_len > 1) {
+                setpos(args[0] - 1, args[1] - 1);
+            }
+            break;
+
+        case 's': case 'S':
+            // Set the value if 's'
+            setting = f == 's';
+            if (arg_len) {
+                switch (args[0]) {
+                    case 1: term_echo = setting; break;
+                    case 2: term_nocanon = setting; break;
+                }
+            }
+            break;
+    }
+}
+
+// Function to parse the escape sequence for `term_write'; returns 1 when the
+// literal character should be put on screen
+int8_t esc_parse(uint8_t c) {
+    static esc_state_t state = IDLE;
+    // Buffer for each argument
+    static int8_t buf[4];
+    static uint8_t buf_len = 0;
+    // All the arguments
+    static uint8_t args[4];
+    static uint8_t arg_len = 0;
+    // Unconditional reset; start a new sequence whenever an escape is
+    // encountered, regardless of current progress
+    if (c == 0x1b) {
+        state = A_ESCAPE;
+        return 0;
+    }
+    if (state == A_ESCAPE && c == '[') {
+        state = A_BRACKET;
+        return 0;
+    }
+    if (state == A_BRACKET) {
+        arg_len = 0;
+        buf_len = 0;
+        state = ARG_PARSE;
+    }
+
+    if (state == ARG_PARSE) {
+        if (isalpha(c)) {
+            if (buf_len < 3) {
+                buf[buf_len++] = c;
+            }
+            return 0;
+        } else if (c == ';') {
+            if (arg_len < 3) {
+                args[arg_len++] = atoi(buf, 10);
+            }
+            return 0;
+        } else {
+            esc_funcs(c, args, arg_len);
+            state = IDLE;
+            return 0;
+        }
+    }
+    return 1;
+}
+
+int32_t term_write(const int8_t* buf, uint32_t nbytes, FILE *file) {
     int i;
-    static uint8_t state = 0;
     for (i = 0; i < nbytes; i ++) {
         uint8_t c = ((char * ) buf)[i];
-        // Simple state machine to parse escape codes with a format of ^[[...
-        // only colors for now, with a format of ^[[\x\x or ^[[xx
-        // first digit is foreground color, second is background
-        // if 'x' is used, then default color is used.
-        if (c == 0x1b) {
-            state = 1;
-            continue;
+        if (esc_parse(c)) {
+            putc(c);
         }
-        if (c == '[') {
-            state = 2;
-            continue;
-        }
-        if (state == 2 || state == 3) {
-            if (c == 'x') {
-                if (state == 2) {
-                    setattr((getattr() & 0xF0) | (DEF_ATTR & 0x0F));
-                    state ++;
-                } else if (state == 3) {
-                    setattr((getattr() & 0x0F) | (DEF_ATTR & 0xF0));
-                    state = 0;
-                }
-                continue;
-            }
-            if (c >= '0' && c <= '9') {
-                c -= '0';
-            } else if (c >= 'A' && c <= 'F') {
-                c -= 'A';
-                c += 10;
-            } else if (c >= 'a' && c <= 'f') {
-                c -= 'a';
-                c += 10;
-            }
-            if (state == 2) {
-                setattr((getattr() & 0xF0) | (c & 0x0F));
-                state ++;
-            } else if (state == 3) {
-                setattr((getattr() & 0x0F) | (c & 0xF0));
-                state = 0;
-            }
-            continue;
-        }
-        state = 0;
-
-        putc(c);
     }
     return nbytes;
 }
 
 void term_key_handler(key_t key) {
+    if (!term_nocanon) {    // Canonical mode
+        term_curpos = term_buf_count;
+        addch(key.key);
+        return;
+    }
+
     int i;
     if (key.modifiers == MOD_CTRL) {     // Non-printable; probably a control character
         switch (key.key) {
@@ -248,12 +311,14 @@ void addch(uint8_t ch) {
         }
         term_buf[term_curpos++] = ch;
         term_buf_count ++;
-        putc(ch);
-        for (i = term_curpos; i < term_buf_count; i ++) {
-            putc(term_buf[i]);
-        }
-        for (i = term_buf_count - term_curpos; i > 0; i --) {
-            back();
+        if (term_echo) {
+            putc(ch);
+            for (i = term_curpos; i < term_buf_count; i ++) {
+                putc(term_buf[i]);
+            }
+            for (i = term_buf_count - term_curpos; i > 0; i --) {
+                back();
+            }
         }
     }
 }
