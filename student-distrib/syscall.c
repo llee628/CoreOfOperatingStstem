@@ -243,7 +243,9 @@ int32_t syscall_open(const int8_t* filename) {
         if (!(task_pcb->open_files[i].flags.used)) {
             int32_t retval;
             if (dent.filetype == FILE_TYPE_RTC) {
-                retval = rtc_open(filename, &task_pcb->open_files[i]);
+                rtc_info_t rtc;
+                retval = rtc_open(&rtc);
+                //retval = rtc_open(filename, &task_pcb->open_files[i]);
             } else {
                 retval = fs_open(filename, &task_pcb->open_files[i]);
             }
