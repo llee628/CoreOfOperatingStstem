@@ -6,7 +6,7 @@
 #include "file_sys.h"
 #include "x86_desc.h"
 
-static int task_count = 1;
+static uint8_t pid_used[MAX_PROC_NUM] = {0};
 
 int32_t syscall_isr(int32_t callnum, int32_t a, int32_t b, int32_t c) {
     switch (callnum) {
@@ -42,6 +42,7 @@ int32_t syscall_halt(uint8_t status) {
             :"%eax"
         );
     }
+    pid_used[task_pcb->pid] = 0;
     uint32_t prev_ebp = (uint32_t) task_pcb->prev_ebp;
     uint32_t prev_esp = (uint32_t) task_pcb->prev_esp;
     asm volatile (
@@ -62,15 +63,22 @@ int32_t syscall_halt(uint8_t status) {
 }
 
 int32_t syscall_execute(const int8_t* command) {
+    int pid;
+    for (pid = 1; pid < MAX_PROC_NUM; pid ++) {
+        if (!pid_used[pid]) {
+            goto syscall_execute__parse_args;
+        }
+    }
+    return -1;      // No usable pid
+
+syscall_execute__parse_args:;
     int i;
     for (i = 0; isalnum(command[i]); i ++);
     const int8_t *args = command + i;
 
     // 1. Setup arguments
-    if (*args) {
-        while (*args == ' ') {
-            args ++;
-        }
+    while (*args == ' ') {
+        args ++;
     }
 
     // 2. Copy the command itself so we have a guaranteed null-terminated string
@@ -106,15 +114,13 @@ int32_t syscall_execute(const int8_t* command) {
     }
 
     // 4. Setup paging; Set task's target page address
-    page_directory[USER_PAGE_INDEX].page_PDE.page_addr = TASK_PAGE_INDEX(task_count);
+    page_directory[USER_PAGE_INDEX].page_PDE.page_addr = TASK_PAGE_INDEX(pid);
     // Reload the TLB
     asm volatile(
-            "movl %%cr3, %%eax;"
-            " movl %0, %%cr3; "
-            :
-            : "r"(page_directory)
-            :"%eax"
-            );
+        " movl %0, %%cr3; "
+        :
+        : "r"(page_directory)
+    );
 
     // Copy the rest of the image
     uint8_t *task_img_cur = (uint8_t *) TASK_IMG_START_ADDR;
@@ -128,7 +134,7 @@ int32_t syscall_execute(const int8_t* command) {
     fs_file_close(&f);
 
     // 5. Setup PCB
-    PCB_t *task_pcb = (PCB_t *) TASK_KSTACK_TOP(task_count);
+    PCB_t *task_pcb = (PCB_t *) TASK_KSTACK_TOP(pid);
     for (i = 2; i < TASK_MAX_FILES; i ++) {
         task_pcb->open_files[i].flags.used = 0;
     }
@@ -142,12 +148,12 @@ int32_t syscall_execute(const int8_t* command) {
     } else {
         task_pcb->parent = NULL;
     }
-    task_pcb->pid = task_count;
+    task_pcb->pid = pid;
 
-    tss.esp0 = TASK_KSTACK_BOT(task_count);
+    tss.esp0 = TASK_KSTACK_BOT(pid);
     tss.ss0 = KERNEL_DS;
 
-    task_count ++;
+    pid_used[pid] = 1;
 
     // 6. Context switch
     asm volatile (
@@ -243,15 +249,14 @@ int32_t syscall_open(const int8_t* filename) {
         if (!(task_pcb->open_files[i].flags.used)) {
             int32_t retval;
             if (dent.filetype == FILE_TYPE_RTC) {
-                rtc_info_t rtc;
-                retval = rtc_open(&rtc);
-                //retval = rtc_open(filename, &task_pcb->open_files[i]);
+                retval = rtc_open(filename, &task_pcb->open_files[i]);
             } else {
                 retval = fs_open(filename, &task_pcb->open_files[i]);
             }
             if (retval) {
                 return -1;
             }
+            task_pcb->open_files[i].flags.used = 1;
             return i;
         }
     }
@@ -267,6 +272,8 @@ int32_t syscall_close(int32_t fd) {
     if (task_pcb->open_files[fd].file_ops->close(&task_pcb->open_files[fd])) {
         return -1;
     }
+
+    task_pcb->open_files[fd].flags.used = 0;
     return 0;
 }
 
@@ -280,6 +287,12 @@ int32_t syscall_getargs(int8_t* buf, uint32_t nbytes) {
 }
 
 int32_t syscall_vidmap(uint8_t** screen_start) {
+    if ((uint32_t) screen_start < TASK_VIRT_PAGE_BEG
+            || (uint32_t) screen_start >= TASK_VIRT_PAGE_END) {
+        return -1;
+    }
+
+    *screen_start = (uint8_t *) TASK_VIDMEM_START;
     return 0;
 }
 
