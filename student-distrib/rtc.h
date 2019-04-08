@@ -8,9 +8,9 @@
 #include "types.h"
 #include "task.h"
 
-// frequency = 32768 >> (rate-1) = 1024 Hz, rate = 6
-// 2 < rate < 15
-#define RTC_RATE 6
+// frequency = 32768 >> (rate-1) = 8192 Hz, rate = 3
+// 3 <= rate < 15
+#define RTC_RATE 3
 #define RTC_OPEN_RATE   15      //set rtc frequency to 2Hz
 
 // I/O port 

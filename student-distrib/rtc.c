@@ -35,7 +35,10 @@ void init_rtc(void) {
 	outb(RTC_REG_B, RTC_ADDR_PORT);		// set the index again (a read will reset the index to register D)
 	outb(prev | 0x40, RTC_DATA_PORT);	// write the previous value ORed with 0x40. This turns on bit 6 of register B
 
-	rtc_set_pi_freq(RTC_SYS_MAX_FREQ);
+	outb(RTC_FREQ_SELECT, RTC_ADDR_PORT);	// set index to register A, disable NMI
+	prev = inb(RTC_DATA_PORT);				// get initial value of register A
+	outb(RTC_FREQ_SELECT, RTC_ADDR_PORT);	// reset index to A
+	outb((prev & 0xF0) | 3, RTC_DATA_PORT);	//write only our rate to A. Note, rate is the bottom 4 bits.
 	sti();
 }
 
@@ -74,22 +77,12 @@ int32_t rtc_set_pi_freq(int32_t freq){
 	return 0;
 }
 
-/* rtc_write_usr
- *	Descrption:	Set the frequency of user RTC
- * 	
- *	Arg: freq: must be a power of 2 and inside the range of [2,8192]
- *		isSys: if the caller is system (system can reach 8192Hz, however user can
- * 			only reach 1024hz)
- * 	RETURN:
- * 		-1 if failed
- * 		0  if sucess
- */
 int32_t rtc_write(const int8_t *buf, uint32_t length, FILE *file){
 	if (length < 4 || !buf) {
 		return -1;
 	}
 
-	uint32_t freq = *(uint32_t *) buf;
+	uint32_t freq = *(int32_t *) buf;
 	if (freq > RTC_USER_MAX_FREQ) {
 		return -1;
 	}

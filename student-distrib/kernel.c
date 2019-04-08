@@ -182,45 +182,15 @@ void entry(unsigned long magic, unsigned long addr) {
 	setattr(DEF_ATTR);
 	putc('\n');
 
-	do_syscall(4, 1, (int32_t) "\x1b[e\x1b[3;b\x1b[20;10;p0xDEADBEEF\x1b[b\x1b[r", 33);
-
-	/* do_syscall(4, 1, (int32_t) "\x1b[1;s\x1b[2;s", 10); */
-	/* char c; */
-	/* while (1) { */
-	/* 	do_syscall(3, 0, (int32_t) &c, 1); */
-	/* 	printf("keypressed: 0x%x, %c\n", c, c); */
-	/* } */
 #ifdef RUN_TESTS
     /* Run tests */
     launch_tests();
 #else
-	printf("syscall: %d\n", do_syscall(2, (uint8_t *) "shell", 0, 0));
+	while (1) {
+		do_syscall(2, (int32_t) (uint8_t *) "shell", 0, 0);
+	}
 #endif
 	while (1) {
 		asm volatile ("hlt;");
 	}
-
-	uint8_t buf_size = 128;
-	char buf[buf_size];
-	while (1) {
-		/* term_write(" => ", 4); */
-		do_syscall(4, 1, (int32_t) (char *) " => ", 4);
-		uint8_t read_size = do_syscall(3, 0, (int32_t) buf, buf_size);
-		/* uint8_t read_size = term_read(buf, buf_size); */
-		printf("read_size = %d\n", read_size);
-        //int32_t rtc_read_rvalue = rtc_read();
-        //printf("rtc_read_rvalue = %d\n", rtc_read_rvalue);
-		char *res = "\x1b[30buf\x1b[xx=";
-		do_syscall(4, 1, (int32_t) (char *) res, strlen(res));
-		do_syscall(4, 1, (int32_t) (char *) buf, read_size);
-		/* term_write(res, strlen(res)); */
-		/* term_write(buf, read_size); */
-
-	}
-
-
-    /* Execute the first program ("shell") ... */
-
-    /* Spin (nicely, so we don't chew up cycles) */
-    asm volatile (".1: hlt; jmp .1;");
 }

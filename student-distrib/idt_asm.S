@@ -206,15 +206,39 @@ _xf_isr:
 	popa
 	iret
 
+SYSCALL_JMP_TAB:
+	.long syscall_halt
+	.long syscall_execute
+	.long syscall_read
+	.long syscall_write
+	.long syscall_open
+	.long syscall_close
+	.long syscall_getargs
+	.long syscall_vidmap
+	.long syscall_set_handler
+	.long syscall_sigreturn
+
 # Syscall
 _syscall_isr:
     pusha
     push %edx
     push %ecx
     push %ebx
-    push %eax
-    call syscall_isr
-    add $16, %esp
+	cmp $1, %eax
+	jl _syscall_isr__error
+	cmp $10, %eax
+	jg _syscall_isr__error
+	sub $1, %eax
+	mov SYSCALL_JMP_TAB(, %eax, 4), %eax
+	call *%eax
+    add $12, %esp
+	mov %eax, 28(%esp)
+    popa
+    iret
+
+_syscall_isr__error:
+	mov $-1, %eax
+    add $12, %esp
 	mov %eax, 28(%esp)
     popa
     iret
