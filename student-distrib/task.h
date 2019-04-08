@@ -3,7 +3,6 @@
 
 #include "types.h"
 #include "page.h"
-#include "rtc_info.h"
 
 #define BUF_SIZE 256
 // Maximum number of files open for each task
@@ -22,8 +21,11 @@
 #define TASK_USTACK_BOT(c) (0x800000 + 0x40000 * (c + 1))
 #define KSTACK_TOP_MASK (~0x1FFF)
 
-#define TASK_VIRT_PAGE_BEG (0x8000000)
-#define TASK_VIRT_PAGE_END (0x8400000)
+#define MAX_PROC_NUM 32
+
+#define TASK_VIRT_PAGE_BEG 0x8000000
+#define TASK_VIRT_PAGE_END 0x8400000
+#define TASK_VIDMEM_START  (0x8400000 + (VID_MEM_ADDR << ADDRESS_SHIFT))
 
 typedef enum {
     TASK_FILE_REG,
@@ -54,12 +56,11 @@ typedef struct file_ops_table {
 
 typedef struct PCB_s {
     FILE open_files[TASK_MAX_FILES];
-    rtc_info_t rtc_info;
     struct PCB_s *parent;
     const int8_t *cmd_args;
     uint8_t *prev_esp;
     uint8_t *prev_ebp;
-    uint8_t signal;
+    int8_t signal;
     uint8_t pid;
 } PCB_t;
 

@@ -182,6 +182,14 @@ void entry(unsigned long magic, unsigned long addr) {
 	setattr(DEF_ATTR);
 	putc('\n');
 
+	do_syscall(4, 1, (int32_t) "\x1b[e\x1b[3;b\x1b[20;10;p0xDEADBEEF\x1b[b\x1b[r", 33);
+
+	/* do_syscall(4, 1, (int32_t) "\x1b[1;s\x1b[2;s", 10); */
+	/* char c; */
+	/* while (1) { */
+	/* 	do_syscall(3, 0, (int32_t) &c, 1); */
+	/* 	printf("keypressed: 0x%x, %c\n", c, c); */
+	/* } */
 #ifdef RUN_TESTS
     /* Run tests */
     launch_tests();

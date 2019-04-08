@@ -97,6 +97,18 @@ void init_page(void){
     page_directory[USER_PAGE_INDEX].page_PDE.reserved = 0x0;
     page_directory[USER_PAGE_INDEX].page_PDE.page_addr = USER_PAGE_INDEX;
 
+    page_directory[USER_PAGE_INDEX + 1].table_PDE.present = 0x1;
+    page_directory[USER_PAGE_INDEX + 1].table_PDE.read_write = 0x1;
+    page_directory[USER_PAGE_INDEX + 1].table_PDE.user_super = 0x1;
+    page_directory[USER_PAGE_INDEX + 1].table_PDE.pwt = 0x0;
+    page_directory[USER_PAGE_INDEX + 1].table_PDE.pcd = 0x0;
+    page_directory[USER_PAGE_INDEX + 1].table_PDE.accessed = 0x0;
+    page_directory[USER_PAGE_INDEX + 1].table_PDE.page_size = 0x0;
+    page_directory[USER_PAGE_INDEX + 1].table_PDE.global = 0x0;
+    page_directory[USER_PAGE_INDEX + 1].table_PDE.available = 0x0;
+    page_directory[USER_PAGE_INDEX + 1].table_PDE.reserved = 0x0;
+    page_directory[USER_PAGE_INDEX + 1].table_PDE.table_addr = (uint32_t)vidmem_page_table >> ADDRESS_SHIFT;
+
     /* Enable paging and 4MB pages */
     asm volatile(
       " movl %0, %%eax; "

@@ -4,6 +4,8 @@
 #include "x86_desc.h"
 #include "lib.h"
 #include "i8259.h"
+#include "task.h"
+#include "syscall.h"
 
 #define RTC_SYS_START_FREQ 2
 
@@ -31,9 +33,16 @@ static int32_t get_target_count( int32_t sys_int_freq, int32_t target_int_freq){
 	return 1<< i;
 }
 
+static FILE *rtc_files[MAX_PROC_NUM] = {NULL};
+
+file_ops_table_t rtc_file_ops_table = {
+    .open = rtc_open,
+    .read = rtc_read,
+    .write = rtc_write,
+    .close = rtc_close,
+};
 
 void init_rtc(void) {
-	char prev;
 	cli();
 	// Set interrupt handler
 	SET_IDT_ENTRY(idt[RTC_INT], _rtc_isr);
@@ -46,11 +55,11 @@ void init_rtc(void) {
 	// Init routine from https://wiki.osdev.org/RTC
 	// Enable interrupt
 	outb(RTC_REG_B, RTC_ADDR_PORT);		// select register B, and disable NMI
-	prev = inb(RTC_DATA_PORT);		// read the current value of register B
+	char prev = inb(RTC_DATA_PORT);		// read the current value of register B
 	outb(RTC_REG_B, RTC_ADDR_PORT);		// set the index again (a read will reset the index to register D)
-	outb(prev | 0x40, RTC_DATA_PORT);// write the previous value ORed with 0x40. This turns on bit 6 of register B
+	outb(prev | 0x40, RTC_DATA_PORT);	// write the previous value ORed with 0x40. This turns on bit 6 of register B
 
-	rtc_set_pi_freq(RTC_SYS_START_FREQ);
+	rtc_set_pi_freq(RTC_SYS_MAX_FREQ);
 	sti();
 }
 
@@ -68,9 +77,6 @@ void init_rtc(void) {
 int32_t rtc_set_pi_freq(int32_t freq){
 	int tmp, rtc_rate_val;
 	char prev;
-	if( is_valid_freq(freq,1) != 1){
-		return -1;
-	}
 
 	//Calculate real rtc register value
 	tmp =1;
@@ -88,7 +94,7 @@ int32_t rtc_set_pi_freq(int32_t freq){
 	outb(RTC_FREQ_SELECT, RTC_ADDR_PORT);	// reset index to A
 	outb((prev & 0xF0) | (rtc_rate_val&0xF), RTC_DATA_PORT);	//write only our rate to A. Note, rate is the bottom 4 bits.
 	sti();
-	cur_sys_int_freq = rtc_rate_val; 
+	/* cur_sys_int_freq = rtc_rate_val; */ 
 	return 0;
 }
 
@@ -102,20 +108,18 @@ int32_t rtc_set_pi_freq(int32_t freq){
  * 		-1 if failed
  * 		0  if sucess
  */
-int32_t rtc_write_usr(rtc_info_t *rtc, int32_t freq){
-	if(rtc==NULL || is_valid_freq(freq, 0) != 1){
+int32_t rtc_write(const int8_t *buf, uint32_t length, FILE *file){
+	if (length < 4 || !buf) {
 		return -1;
 	}
 
-	rtc->waiting = 0;
-
-	//update sys freq 
-	if( freq > cur_sys_int_freq ){
-		rtc_set_pi_freq( freq);
+	uint32_t freq = *(uint32_t *) buf;
+	if (freq > RTC_USER_MAX_FREQ) {
+		return -1;
 	}
-	rtc->sys_int_freq = cur_sys_int_freq;
-	rtc->target_int = get_target_count( rtc->sys_int_freq, freq);
-	rtc->freq = freq;
+
+	file->inode = RTC_SYS_MAX_FREQ / freq;
+
 	return 0;
 }
 
@@ -141,84 +145,54 @@ int32_t rtc_read(){
 */
 	outb(0x0C, RTC_ADDR_PORT);
 	(void) inb(RTC_DATA_PORT);
-	if( cur_rtc != NULL && cur_rtc->waiting ==1 )
-	{
-		int_cnt++;
-		if( int_cnt > int_target_count ){
-			cur_rtc->waiting =0;
-			//test_rtc_freq(0);
+	uint8_t i;
+	for (i = 0; i < MAX_PROC_NUM; i ++) {
+		FILE *cur_file = rtc_files[i];
+		if (cur_file) {
+			if (cur_file->pos == cur_file->inode) {
+				cur_file->pos = 0;
+			} else {
+				cur_file->pos ++;
+			}
+		}
+	}
+}
+
+
+int32_t rtc_read(int8_t* buf, uint32_t length, FILE *file){
+	sti();
+	while (file->pos != file->inode) {
+		asm volatile ("hlt");
+	}
+	cli();
+	return 0;
+}
+
+int32_t rtc_open(const int8_t *filename, FILE *file){
+	// `pos' as the counter
+    file->pos = 0;
+	// `inode' as the counter to match against
+    file->inode = RTC_USER_DEF_FREQ;
+	file->file_ops = &rtc_file_ops_table;
+	file->flags.type = TASK_FILE_RTC;
+
+	uint8_t i;
+	for (i = 0; i < MAX_PROC_NUM; i ++) {
+		if (!rtc_files[i]) {
+			rtc_files[i] = file;
+			return 0;
 		}
 	}
 
+	while (1) { asm volatile ("hlt;"); } 	// UNREACHABLE!!!
 }
 
-
-int32_t rtc_read(rtc_info_t *rtc){
-	if( rtc == NULL || !(rtc->valid)  ){return -1;}
-	
-	if( rtc->sys_int_freq != cur_sys_int_freq ){
-		rtc->sys_int_freq = cur_sys_int_freq;
-		rtc->target_int = get_target_count( rtc->sys_int_freq, rtc->freq);
-	}
-
-	int_target_count = rtc->target_int;
-	int_cnt = 0;
-	rtc->waiting = 1;
-	cur_rtc = rtc;
-	while( cur_rtc->waiting ){
-		;
-	} 
-	cur_rtc = NULL;
-    return 0;
-}
-
-int32_t rtc_open( rtc_info_t *rtc ){
-	if( rtc!= NULL && rtc->valid == 0 ){
-		rtc->valid = 1;
-		rtc->waiting =0;
-		rtc->freq = RTC_USR_DEFAULT_FREQ;
-		rtc->sys_int_freq =  cur_sys_int_freq;
-
-		rtc_write_usr(rtc, rtc->freq);
-		return 0;
-	}else{
-		return -1;
-	}
-}
-
-int32_t rtc_close(rtc_info_t *rtc){
-	if( rtc!= NULL ){
-		if( cur_rtc == rtc ){
-			cur_rtc = NULL;
+int32_t rtc_close(FILE *file){
+	uint8_t i;
+	for (i = 0; i < MAX_PROC_NUM; i ++) {
+		if (rtc_files[i] == file) {
+			rtc_files[i] = NULL;
 		}
-
-		// The system might have use slower RTC freq instead
-		if( rtc->freq == cur_sys_int_freq ){
-			rtc_set_pi_freq( RTC_SYS_START_FREQ);
-		}
-		rtc->valid =0;
-		return 0;
-	}else{
-		return -1;
 	}
-    return 0;
-}
-
-
-static int8_t is_valid_freq( int32_t freq, int8_t is_sys){
-	if ( (freq<2) || (freq>RTC_SYS_MX_FREQ) ){
-		return 0;
-	}
-	// limit user frequency
-	if ( !is_sys && freq > rtc_max_user_freq) {
-		return 0;
-	}
-
-	//Check that the input was really a power of 2.
-	int tmp =1;
-	while (freq > (1<<tmp))
-		tmp++;
-	if (freq != (1<<tmp))
-		return 0;
-	return 1;
+	return 0;
 }

@@ -48,7 +48,6 @@ int32_t fs_open(const int8_t *filename, FILE *file) {
         file->file_ops = &fs_dir_ops_table;
         file->flags.type = TASK_FILE_DIR;
     }
-    file->flags.used = 1;
     return 0;
 }
 
@@ -88,8 +87,6 @@ int fs_file_write(const int8_t* buf, uint32_t length, FILE *file){ return -1; }
  * Function: Resets the cur_file variable
  */
 int fs_file_close(FILE *file){
-    file->pos = 0;
-    file->inode = 0;
     return 0;
 }
 
