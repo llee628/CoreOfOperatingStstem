@@ -250,6 +250,7 @@ void set_vid_char(int x, int y, uint8_t ch) {
  * Return Value: void
  *  Function: Output a character to the console */
 void scroll() {
+	cli();
 	int x, y;
 	uint8_t old_attr = attr;
 	for (y = 0; y < NUM_ROWS - 1; y ++) {
@@ -265,6 +266,7 @@ void scroll() {
 	}
 	setpos(screen_x, screen_y - 1);
 	setattr(old_attr);
+	/* sti(); */
 }
 
 /* void putc(uint8_t c);
