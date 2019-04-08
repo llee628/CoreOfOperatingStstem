@@ -9,10 +9,11 @@ char term_buf[TERM_BUF_SIZE_W_NL];
 uint8_t term_buf_count = 0;
 uint8_t term_read_done = 0;
 uint8_t term_curpos = 0;
-// Echo the character to the screen
-uint8_t term_echo = 1;
-// Non-canonical operation; buffer the inputs
-uint8_t term_nocanon = 1;
+// Don't echo the character to the screen
+uint8_t term_noecho = 0;
+// canonical operation; don't buffer the inputs
+uint8_t term_canon = 0;
+int cur_x_store, cur_y_store;
 
 // File ops table
 file_ops_table_t term_file_ops_table = {
@@ -38,13 +39,23 @@ int32_t term_read(int8_t* buf, uint32_t nbytes, FILE *file) {
     if (!buf) {
         return -1;
     }
-    if (term_nocanon) {
+    if (term_canon) {
+        sti();
+        while (!term_buf_count) {
+            asm volatile ("hlt");
+        }
+        cli();
+        memcpy(buf, term_buf, 1);
+        term_curpos = 1;
+        delch();
+        return 1;
+    } else {
         sti();
         while (!term_read_done) {
             asm volatile ("hlt");
         }
         cli();
-        if (term_echo) {
+        if (!term_noecho) {
             putc('\n');
         }
         term_buf[term_buf_count++] = '\n';
@@ -54,14 +65,6 @@ int32_t term_read(int8_t* buf, uint32_t nbytes, FILE *file) {
         term_read_done = 0;
         term_curpos = 0;
         return copy_count;
-    } else {
-        while (!term_buf_count) {
-            asm volatile ("hlt");
-        }
-        memcpy(buf, term_buf, 1);
-        term_curpos = 1;
-        delch();
-        return 1;
     }
 }
 
@@ -72,20 +75,46 @@ void esc_funcs(uint8_t f, uint8_t *args, uint8_t arg_len) {
         case 'f':
             if (arg_len) {
                 setattr((getattr() & 0xF0) | (args[0] & 0x0F));
+            } else {
+                setattr((getattr() & 0xF0) | (DEF_ATTR & 0x0F));
             }
             break;
 
         // Background color
         case 'b':
             if (arg_len) {
-                setattr((getattr() & 0x0F) | (args[0] & 0xF0));
+                setattr((getattr() & 0x0F) | ((args[0] & 0x0F) << 4));
+            } else {
+                setattr((getattr() & 0x0F) | (DEF_ATTR & 0xF0));
             }
             break;
 
         // Set cursor position
         case 'p':
             if (arg_len > 1) {
-                setpos(args[0] - 1, args[1] - 1);
+                setpos(args[1] - 1, args[0] - 1);
+            }
+            break;
+
+        // Save cursor position
+        case 'e':
+            if (!arg_len) {
+                cur_x_store = getposx();
+                cur_y_store = getposy();
+            }
+            break;
+
+        // Restore cursor position
+        case 'r':
+            if (!arg_len) {
+                setpos(cur_x_store, cur_y_store);
+            }
+            break;
+
+        // Clear screen
+        case 'c':
+            if (!arg_len) {
+                clear();
             }
             break;
 
@@ -94,8 +123,16 @@ void esc_funcs(uint8_t f, uint8_t *args, uint8_t arg_len) {
             setting = f == 's';
             if (arg_len) {
                 switch (args[0]) {
-                    case 1: term_echo = setting; break;
-                    case 2: term_nocanon = setting; break;
+                    case 1: term_noecho = setting; break;
+                    case 2: term_canon = setting; break;
+                    case 3:
+                        if (setting) {
+                            // Cursor scanline ends at 0; no cursor
+                            outb(0x0B, 0x3D4); outb(0x00, 0x3D5);
+                        } else {
+                            // Cursor scanline ends at 15; back to blocky cursor
+                            outb(0x0B, 0x3D4); outb(0x0F, 0x3D5);
+                        }
                 }
             }
             break;
@@ -129,19 +166,22 @@ int8_t esc_parse(uint8_t c) {
     }
 
     if (state == ARG_PARSE) {
-        if (isalpha(c)) {
+        if (isnum(c)) {
             if (buf_len < 3) {
                 buf[buf_len++] = c;
             }
             return 0;
         } else if (c == ';') {
             if (arg_len < 3) {
+                buf[buf_len] = 0;
                 args[arg_len++] = atoi(buf, 10);
             }
+            buf_len = 0;
             return 0;
         } else {
             esc_funcs(c, args, arg_len);
             state = IDLE;
+            buf_len = arg_len = 0;
             return 0;
         }
     }
@@ -160,7 +200,7 @@ int32_t term_write(const int8_t* buf, uint32_t nbytes, FILE *file) {
 }
 
 void term_key_handler(key_t key) {
-    if (!term_nocanon) {    // Canonical mode
+    if (term_canon) {    // Canonical mode
         term_curpos = term_buf_count;
         addch(key.key);
         return;
@@ -311,7 +351,7 @@ void addch(uint8_t ch) {
         }
         term_buf[term_curpos++] = ch;
         term_buf_count ++;
-        if (term_echo) {
+        if (!term_noecho) {
             putc(ch);
             for (i = term_curpos; i < term_buf_count; i ++) {
                 putc(term_buf[i]);
@@ -332,13 +372,15 @@ void delch() {
         }
         term_curpos --;
         term_buf_count --;
-        back();
-        int old_x = getposx(), old_y = getposy();
-        for (i = term_curpos; i < term_buf_count; i ++) {
-            putc(term_buf[i]);
+        if (!term_canon) {
+            back();
+            int old_x = getposx(), old_y = getposy();
+            for (i = term_curpos; i < term_buf_count; i ++) {
+                putc(term_buf[i]);
+            }
+            putc(' ');
+            setpos(old_x, old_y);
         }
-        putc(' ');
-        setpos(old_x, old_y);
     }
 }
 

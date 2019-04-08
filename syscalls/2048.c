@@ -44,8 +44,8 @@ void _putchar(char c) {
     );
 }
 
-int random() {
-    static unsigned int lfsr = 0xDEADBEEF;
+unsigned int random() {
+    static unsigned int lfsr = 0xC0FFEE;
     unsigned int bit;
 
     /* taps: 16 14 13 11; feedback polynomial: x^16 + x^14 + x^13 + x^11 + 1 */
@@ -300,7 +300,7 @@ void place_tile (int tile[16]) {
     }
 
     if (empty_num > 0) {
-        tile_num = random () % 10 ? 2 : 4;
+        tile_num = (random () % 10) ? 2 : 4;
         empty_loc = random () % (empty_num);
         tile_loc = empty_tile[empty_loc];
         tile[tile_loc] = tile_num;
@@ -310,7 +310,7 @@ void place_tile (int tile[16]) {
 void print_status (int score) {
     printf ("\e[24;1;p");
     printf ("\e[0;f\e[15;b");
-    printf ("%80s\r%70d\r%60s\r%s", "          ", score, "YOUR SCORE: ", "-- THE 2048 GAME --");
+    printf ("%79s\r%70d\r%60s\r%s", "          ", score, "YOUR SCORE: ", "-- THE 2048 GAME --");
     printf ("\e[24;80;p\e[f\e[b");
 }
 
@@ -409,8 +409,7 @@ int main () {
     int tile_bak[16];
 
     printf ("\e[e");            //store cursor position
-    /* printf ("\e[?1049h");       //store window in buffer */
-    /* printf ("\e[2J");           //clear screen */
+    printf ("\e[c");           //clear screen
     print_border ();
     printf("\e[1;s\e[2;s");   // Set to canonical mode and no echo
     /* struct termios saved_state = set_non_canonical (); */
@@ -494,6 +493,5 @@ end:
     //exit
     printf("\e[1;S\e[2;S");   // Reset terminal
     printf ("\e[r\n");          //restore cursor position
-    /* printf ("\e[?1049l");       //restore the terminal window */
     return 0;
 }
