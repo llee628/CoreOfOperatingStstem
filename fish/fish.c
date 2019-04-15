@@ -35,7 +35,7 @@ int main(void)
 
     add_frames(file0, file1, rtc_fd);
 
-    ret_val = 8;
+    ret_val = 32;
     ret_val = ece391_write(rtc_fd, &ret_val, 4);
 
     for(i=0; i<WAIT; i++) {
