@@ -8,22 +8,6 @@
 
 static uint8_t pid_used[MAX_PROC_NUM] = {0};
 
-/* int32_t syscall_isr(int32_t callnum, int32_t a, int32_t b, int32_t c) { */
-/*     switch (callnum) { */
-/*         case 1: return syscall_halt((uint8_t) a); */
-/*         case 2: return syscall_execute((const int8_t *) a); */
-/*         case 3: return syscall_read(a, (int8_t *) b, c); */
-/*         case 4: return syscall_write(a, (const int8_t *) b, c); */
-/*         case 5: return syscall_open((const int8_t *) a); */
-/*         case 6: return syscall_close(a); */
-/*         case 7: return syscall_getargs((int8_t *) a, b); */
-/*         case 8: return syscall_vidmap((uint8_t **) a); */
-/*         case 9: return syscall_set_handler(a, (void *) b); */
-/*         case 10: return syscall_sigreturn(); */
-/*         default: return -1; */
-/*     } */
-/* } */
-
 int32_t syscall_halt(uint8_t status) {
     // Revert info from PCB
     PCB_t *task_pcb = get_cur_pcb();
@@ -139,7 +123,6 @@ syscall_execute__parse_args:;
         task_pcb->open_files[i].flags.used = 0;
     }
     task_pcb->cmd_args = copied_args;
-    task_pcb->signal = 0;
     asm volatile ("movl %%ebp, %0;" : "=r" (task_pcb->prev_ebp));
     asm volatile ("movl %%esp, %0;" : "=r" (task_pcb->prev_esp));
     PCB_t *parent_pcb = (PCB_t *) ((uint32_t) task_pcb->prev_esp & (uint32_t) KSTACK_TOP_MASK);
@@ -149,6 +132,10 @@ syscall_execute__parse_args:;
         task_pcb->parent = NULL;
     }
     task_pcb->pid = pid;
+    task_pcb->signals = 0;
+
+    // Prepare heap bitmap
+    memset((void *) (TASK_VIRT_PAGE_BEG + PCB_SIZE), 0, HEAP_BITMAP_SIZE);
 
     tss.esp0 = TASK_KSTACK_BOT(pid);
     tss.ss0 = KERNEL_DS;
@@ -157,7 +144,7 @@ syscall_execute__parse_args:;
 
     // 6. Context switch
     asm volatile (
-        "movl %0, %%eax;"  // User CS
+        "movl %0, %%eax;"  // User DS
         "movw %%ax, %%ds;"
         "movw %%ax, %%es;"
         "movw %%ax, %%fs;"
@@ -166,7 +153,7 @@ syscall_execute__parse_args:;
         "movl %1, %%eax;" // User ESP
         "push %%eax;"
         "pushf;"
-        "movl %2, %%eax;" // User DS
+        "movl %2, %%eax;" // User CS
         "push %%eax;"
         "movl %3, %%eax;" // Entry point
         "push %%eax;"
@@ -282,6 +269,9 @@ int32_t syscall_getargs(int8_t* buf, uint32_t nbytes) {
         return -1;
     }
     PCB_t *task_pcb = get_cur_pcb();
+    if (nbytes < strlen(task_pcb->cmd_args) + 1) {
+        return -1;
+    }
     strcpy(buf, task_pcb->cmd_args);
     return 0;
 }
@@ -293,14 +283,82 @@ int32_t syscall_vidmap(uint8_t** screen_start) {
     }
 
     *screen_start = (uint8_t *) TASK_VIDMEM_START;
-    return 0;
+    return (int32_t) *screen_start;
 }
 
 int32_t syscall_set_handler(int32_t signum, void* handler) {
+    if (signum < 0 || signum > SIG_SIZE) {
+        return -1;
+    }
+
+    if (handler) {
+        signal_handlers[signum] = handler;
+    } else {
+        signal_handlers[signum] = def_signal_handlers[signum];
+    }
     return 0;
 }
 
-int32_t syscall_sigreturn(void) {
+int32_t _syscall_sigreturn(iret_context_t *context) {
+    uint32_t *user_esp = context->esp;
+    iret_context_t *saved_context = (iret_context_t *) user_esp;
+    context->esp = saved_context->esp;
+    context->addr = saved_context->addr;
+    uint8_t i;
+    for (i = 0; i < 8; i ++) {
+        context->regs[i] = saved_context->regs[i];
+    }
+    return 0;
+}
+
+// Memory allocation is done by setting up a memory bitmap right after the
+// PCB, with every bit denoting if a 32-bit word has been allocated or not.
+// Another counter would take note of the stack growth when `malloc' is
+// called, so that new heap allocation will not overwrite the stack.
+// However, stack overwriting the heap is not protected.
+int32_t syscall_malloc(uint32_t size) {
+    /* size = size / 4 + 1;  // size in words */
+    /* uint32_t *bitmap_word = (uint32_t *) PCB_SIZE; */
+    /* uint8_t bitmap_bit = 0; */
+    /* while (bitmap_word < (uint32_t *) HEAP_START) { */
+    /*     if (*bitmap_word != 0xFFFFFFFF) {   // at least 1 entry is available */
+    /*         goto size_check; */
+    /*     } */
+    /*     bitmap_word ++; */
+    /*     goto next_probe_cycle; */
+
+/* size_check:; */
+    /*     for (uint8_t i = bitmap_bit; i < 32; i ++) { */
+    /*         if (!(*bitmap_word & (1 << i))) {   // the first 0 */
+    /*             bitmap_bit = i; */
+    /*         } */
+    /*     } */
+
+    /*     // Size check */
+    /*     size -= (32 - bitmap_bit); */
+    /*     uint32_t *bitmap_word_end = bitmap_word + 1; */
+    /*     uint32_t word_count = 0; */
+    /*     while (size > 32 && bitmap_word_end < (uint32_t *) HEAP_START) { */
+    /*         if (*bitmap_word_end != 0x00) { */
+    /*             bitmap_word = bitmap_word_end; */
+    /*             bitmap_bit ++; */
+    /*             goto next_probe_cycle; */
+    /*         } */
+    /*         size -= 32; */
+    /*         bitmap_word_end ++; */
+    /*     } */
+    /*     for (uint8_t i = 0; i < 32; i ++) { */
+    /*         if (size && (*bitmap_word_end & (1 << i))) { */
+    /*             bitmap_bit = i + 1; */
+    /*             bitmap_word = bitmap_word_end; */
+    /*             goto next_probe_cycle; */
+    /*         } */
+    /*     } */
+
+    /*     // Size check complete; allocate the memory TODO */
+/* next_probe_cycle:; */
+    /* } */
+
     return 0;
 }
 
@@ -308,4 +366,20 @@ PCB_t *get_cur_pcb() {
     uint32_t cur_esp;
     asm volatile ("movl %%esp, %0;" : "=r" (cur_esp));
     return (PCB_t *) (cur_esp & KSTACK_TOP_MASK);
+}
+
+int32_t do_syscall(int32_t call, int32_t a, int32_t b, int32_t c) {
+    int32_t ret;
+    asm volatile (
+        "mov %1, %%eax;"
+        "mov %2, %%ebx;"
+        "mov %3, %%ecx;"
+        "mov %4, %%edx;"
+        "int $0x80;"
+        "mov %%eax, %0;"
+        : "=g" (ret)
+        : "g" (call), "g" (a), "g" (b), "g" (c)
+        : "%eax", "%ebx", "%ecx", "%edx"
+    );
+    return ret;
 }

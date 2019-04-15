@@ -1,0 +1,37 @@
+#ifndef _SIGNAL_H_
+#define _SIGNAL_H_
+
+#include "types.h"
+typedef void (sighandler_t) ();
+
+typedef enum {
+    SIG_DIV_ZERO = 0,
+    SIG_SEGFAULT,
+    SIG_KB_INT,
+    SIG_ALARM,
+    SIG_USER0,
+    SIG_SIZE,
+} signal_t;
+
+typedef struct {
+    uint32_t regs[8];
+    void *addr;
+    uint32_t cs;
+    uint32_t eflags;
+    void *esp;
+    uint32_t ds;
+} __attribute__ ((packed)) iret_context_t;
+
+#define SIG_FLAG(s) (1 << s)
+
+sighandler_t *signal_handlers[SIG_SIZE];
+sighandler_t *def_signal_handlers[SIG_SIZE];
+
+sighandler_t sighandler_kill_task;
+sighandler_t sighandler_ignore;
+
+void check_signals(iret_context_t *context);
+extern int sigreturn_linkage();
+void init_signals();
+
+#endif
