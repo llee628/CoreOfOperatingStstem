@@ -1,7 +1,25 @@
 #include "idt.h"
 #include "x86_desc.h"
 #include "lib.h"
+#include "task.h"
+#include "signals.h"
+#include "syscall.h"
 
+void exception_handler(uint32_t irq_num, uint32_t errorcode) {
+    if (irq_num == 14) {    // PF
+        uint32_t addr;
+        asm volatile ("movl %%cr2, %0;" : "=r" (addr));
+        printf("exception: irq: %u, error: %u, addr: 0x%#x\n", irq_num, errorcode, addr);
+    } else {
+        printf("exception: irq: %u, error: %u\n", irq_num, errorcode);
+    }
+    PCB_t *task_pcb = get_cur_pcb();
+    if (!irq_num) {     // Divide by zero
+        task_pcb->signals |= SIG_FLAG(SIG_DIV_ZERO);
+    } else {
+        task_pcb->signals |= SIG_FLAG(SIG_SEGFAULT);
+    }
+}
 
 /* Function: general_exceptions_handler;
  * Inputs: exception - the string of which exception to print
@@ -36,8 +54,10 @@ void ts(int32_t errorcode){ general_exceptions_handler("INVALID TSS"); }
 void np(int32_t errorcode){ general_exceptions_handler("SEGMENT NOT PRESENT"); }
 void ss(int32_t errorcode){ general_exceptions_handler("STACK-SEGMENT FAULT"); }
 void gp(int32_t errorcode){ general_exceptions_handler("GENERAL PROTECTION"); }
-void pf(void *addr, int32_t error){
-    printf("PAGE FAULT: addr = %#x, error code = %#x\n", addr, error);
+void pf(int32_t errorcode){
+    uint32_t addr;
+    asm volatile ("mov %%cr2, %0;" : "=r" (addr));
+    printf("PAGE FAULT: addr = %#x, error code = %#x\n", addr, errorcode);
     while(1);
 }
 void mf(void){ general_exceptions_handler("X87 FPU FLOATING-POINT ERROR"); }

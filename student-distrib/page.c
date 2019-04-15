@@ -5,6 +5,7 @@
 /* global arrays for the page directory and page table */
 PDE_t __attribute__((aligned (4096))) page_directory[MAX_ENTRIES];
 PTE_t __attribute__((aligned (4096))) vidmem_page_table[MAX_ENTRIES];
+PTE_t __attribute__((aligned (4096))) user_vidmem_page_table[MAX_ENTRIES];
 
 void init_page(void){
     /* for loop indices */
@@ -65,6 +66,29 @@ void init_page(void){
       vidmem_page_table[i].page_addr = i;
     }
 
+    for(i = 0; i < MAX_ENTRIES; i++){
+      /* if the current mapping is to the Video memory
+      * then mark present, else mark it unpresent */
+      user_vidmem_page_table[i].read_write = 0x1;
+      user_vidmem_page_table[i].pwt = 0x0;
+      user_vidmem_page_table[i].pcd = 0x0;
+      user_vidmem_page_table[i].accessed = 0x0;
+      user_vidmem_page_table[i].dirty = 0x0;
+      user_vidmem_page_table[i].pat = 0x0;
+      user_vidmem_page_table[i].global = 0x0;
+      user_vidmem_page_table[i].available = 0x0;
+      user_vidmem_page_table[i].page_addr = i;
+      if(i == 0){
+        user_vidmem_page_table[i].present = 0x1;
+        user_vidmem_page_table[i].user_super = 0x1;
+        user_vidmem_page_table[i].page_addr = VID_MEM_ADDR;
+      }
+      else{
+        user_vidmem_page_table[i].present = 0x0;
+        user_vidmem_page_table[i].user_super = 0x0;
+      }
+    }
+
     /* mark the rest of the page directory to default values and mark as not present */
     for(j = 2; j < MAX_ENTRIES; j++){
       page_directory[j].page_PDE.present = 0x0;
@@ -97,17 +121,17 @@ void init_page(void){
     page_directory[USER_PAGE_INDEX].page_PDE.reserved = 0x0;
     page_directory[USER_PAGE_INDEX].page_PDE.page_addr = USER_PAGE_INDEX;
 
-    page_directory[USER_PAGE_INDEX + 1].table_PDE.present = 0x1;
-    page_directory[USER_PAGE_INDEX + 1].table_PDE.read_write = 0x1;
-    page_directory[USER_PAGE_INDEX + 1].table_PDE.user_super = 0x1;
-    page_directory[USER_PAGE_INDEX + 1].table_PDE.pwt = 0x0;
-    page_directory[USER_PAGE_INDEX + 1].table_PDE.pcd = 0x0;
-    page_directory[USER_PAGE_INDEX + 1].table_PDE.accessed = 0x0;
-    page_directory[USER_PAGE_INDEX + 1].table_PDE.page_size = 0x0;
-    page_directory[USER_PAGE_INDEX + 1].table_PDE.global = 0x0;
-    page_directory[USER_PAGE_INDEX + 1].table_PDE.available = 0x0;
-    page_directory[USER_PAGE_INDEX + 1].table_PDE.reserved = 0x0;
-    page_directory[USER_PAGE_INDEX + 1].table_PDE.table_addr = (uint32_t)vidmem_page_table >> ADDRESS_SHIFT;
+    page_directory[USER_VIDMEM_INDEX].table_PDE.present = 0x1;
+    page_directory[USER_VIDMEM_INDEX].table_PDE.read_write = 0x1;
+    page_directory[USER_VIDMEM_INDEX].table_PDE.user_super = 0x1;
+    page_directory[USER_VIDMEM_INDEX].table_PDE.pwt = 0x0;
+    page_directory[USER_VIDMEM_INDEX].table_PDE.pcd = 0x0;
+    page_directory[USER_VIDMEM_INDEX].table_PDE.accessed = 0x0;
+    page_directory[USER_VIDMEM_INDEX].table_PDE.page_size = 0x0;
+    page_directory[USER_VIDMEM_INDEX].table_PDE.global = 0x0;
+    page_directory[USER_VIDMEM_INDEX].table_PDE.available = 0x0;
+    page_directory[USER_VIDMEM_INDEX].table_PDE.reserved = 0x0;
+    page_directory[USER_VIDMEM_INDEX].table_PDE.table_addr = (uint32_t)user_vidmem_page_table >> ADDRESS_SHIFT;
 
     /* Enable paging and 4MB pages */
     asm volatile(

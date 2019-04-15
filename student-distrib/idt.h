@@ -33,12 +33,13 @@ void ts(int32_t errorcode);
 void np(int32_t errorcode);
 void ss(int32_t errorcode);
 void gp(int32_t errorcode);
-void pf(void *addr, int32_t error);
+void pf(int32_t errorcode);
 void mf(void);
 void ac(int32_t errorcode);
 void mc(void);
 void xf(void);
 void unreachable(void);
+void exception_handler(uint32_t irq_num, uint32_t errorcode);
 
 void syscall_temp(void);
 

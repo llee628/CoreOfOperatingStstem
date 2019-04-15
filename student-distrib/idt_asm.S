@@ -1,5 +1,3 @@
-# vim:ts=4 noexpandtab
-
 #define ASM     1
 
 #include "idt.h"
@@ -43,6 +41,7 @@
 .globl _hd2_isr
 
 .globl _syscall_isr
+.globl sigreturn_linkage
 
 EXCEPTION_JMP_TAB:
     .long de
@@ -158,20 +157,21 @@ _xf_isr:
 _exception_isr:
     pusha
     push 36(%esp)    // Copy the errorcode
-    mov 36(%esp), %eax     // IRQ num
-    mov EXCEPTION_JMP_TAB(, %eax, 4), %eax
-    call *%eax
-    mov %eax, 32(%esp)    // Store eax back to the stored regs
+    push 36(%esp)    // IRQ num
+    call exception_handler
+    /* mov EXCEPTION_JMP_TAB(, %eax, 4), %eax */
+    /* call *%eax */
+    /* mov %eax, 32(%esp)    // Store eax back to the stored regs */
     jmp _exception_isr__return
 
 _exception_isr__error:
-    mov $-1, 32(%esp)
+    movl $-1, 32(%esp)
 
 _exception_isr__return:
-    add $4, %esp     // Pop copied errorcode
+    add $8, %esp
     popa
     add $8, %esp     // Pop original errorcode and IRQ
-    iret
+    jmp iret_to_user
 
 SYSCALL_JMP_TAB:
     .long syscall_halt
@@ -199,17 +199,15 @@ _syscall_isr:
     sub $1, %eax
     mov SYSCALL_JMP_TAB(, %eax, 4), %eax
     call *%eax
-    add $12, %esp
-    mov %eax, 28(%esp)
-    popa
-    iret
+    jmp _syscall_isr__return
 
 _syscall_isr__error:
     mov $-1, %eax
+_syscall_isr__return:
     add $12, %esp
     mov %eax, 28(%esp)
     popa
-    iret
+    jmp iret_to_user
 
 # Interrupt 1st level handlers
 PIC_ISR_jmp_tab:
@@ -235,7 +233,7 @@ PIC_ISR:
     mov 32(%esp), %eax
     mov PIC_ISR_jmp_tab(, %eax, 4), %eax
     call *%eax
-    cmp $8, %eax
+    cmpl $8, 32(%esp)
     jge PIC_ISR__slave_EOI
     mov $0x20, %al
     outb %al, $0x20
@@ -249,9 +247,7 @@ PIC_ISR__slave_EOI:
 PIC_ISR__end:
     popa
     add $4, %esp     // Pop IRQ num
-    iret
-
-
+    jmp iret_to_user
 
 _pti_isr:    // 0     Programmable Interrupt Timer Interrupt
     push $0
@@ -317,14 +313,31 @@ _hd2_isr:    // 15     Secondary ATA Hard Disk
     push $15
     jmp PIC_ISR
 
-.globl do_syscall
-do_syscall:
-    /* pushl    %ebx */
-    movl    4(%esp),%eax
-    movl    8(%esp),%ebx
-    movl    12(%esp),%ecx
-    movl    16(%esp),%edx
-    int    $0x80
-    /* popl    %ebx */
+syscall_sigreturn:
+    /* pusha */
+    // 28(%esp) is pushed %eax, 48(%esp) is start of IRET context
+    mov %esp, %eax
+    // 8 words for pusha, 1 for return addr, 3 for syscall args, 8 for pusha in syscall_isr
+    add $16, %eax
+    push %eax
+    call _syscall_sigreturn
+    add $4, %esp
+    /* popa */
+    mov 44(%esp), %eax
     ret
 
+sigreturn_linkage:
+    add $4, %esp
+    mov $10, %eax
+    int $0x80
+
+iret_to_user:
+    pusha
+    // 28(%esp) is pushed %eax, 48(%esp) is start of IRET context
+    mov %esp, %eax
+    /* add $32, %eax */
+    push %eax
+    call check_signals
+    add $4, %esp
+    popa
+    iret

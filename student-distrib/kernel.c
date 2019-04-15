@@ -14,6 +14,7 @@
 #include "page.h"
 #include "term.h"
 #include "file_sys.h"
+#include "signals.h"
 
 extern int32_t do_syscall(int32_t a, int32_t b, int32_t c, int32_t d);
 
@@ -159,6 +160,7 @@ void entry(unsigned long magic, unsigned long addr) {
     /* Init the keyboard */
 	init_kb();
     init_term();
+	init_signals();
 
     /* Init the File System */
     fs_init(bblock_addr);
