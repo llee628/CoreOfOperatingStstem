@@ -132,7 +132,7 @@ void init_rtc(void) {
 	outb(RTC_FREQ_SELECT, RTC_ADDR_PORT);	// reset index to A
 	outb((prev & 0xF0) | 3, RTC_DATA_PORT);	//write only our rate to A. Note, rate is the bottom 4 bits.
 
-	sys_freq_pow=0;
+	sys_freq_pow=1;
 	sys_freq = 1<<sys_freq_pow;
 
 	sti();
@@ -173,11 +173,12 @@ int32_t rtc_set_pi_freq(int32_t freq){
 
 	// set frequency	
 	cli();
+	sys_freq_pow=pow;
+	sys_freq = 1<<sys_freq_pow;
 	outb(RTC_FREQ_SELECT, RTC_ADDR_PORT);	// set index to register A, disable NMI
 	prev = inb(RTC_DATA_PORT);				// get initial value of register A
 	outb(RTC_FREQ_SELECT, RTC_ADDR_PORT);	// reset index to A
-	sys_freq_pow=tmp;
-	sys_freq = 1<<sys_freq_pow;
+	outb((prev & 0xF0) | (rtc_rate_val&0xF), RTC_DATA_PORT);        //write only our rate to A. Note, rate is the bottom 4 bits.
 	sti();
 	/* cur_sys_int_freq = rtc_rate_val; */ 
 
@@ -217,8 +218,15 @@ int32_t rtc_write(const int8_t *buf, uint32_t length, FILE *file){
 		return -1;
 	}
 
+	int tmp=1;
+	while (freq > (1<<tmp))
+		tmp++;
+	if (freq != (1<<tmp))
+		return -1;
+
 	int32_t ratio;
 	if(freq > sys_freq ){
+		set_rtc_freq_field(file->inode, tmp);
 		rtc_set_pi_freq(freq);
 	}else{
 		ratio = calc_ratio(sys_freq_pow, file->inode);
@@ -241,7 +249,7 @@ void rtc_isr(void) {
 		FILE *cur_file = rtc_files[i];
 		if (cur_file) {
 			if (cur_file->pos < 0) {
-				cur_file->pos = 1<<get_rtc_ratio(cur_file->inode);
+				continue;
 			} else{
 				--cur_file->pos;
 			}
@@ -262,6 +270,7 @@ int32_t rtc_read(int8_t* buf, uint32_t length, FILE *file){
 	while (file->pos >= 0 ) {
 		asm volatile ("hlt");
 	}
+	file->pos = 1<<get_rtc_ratio(file->inode);
 	cli();
 	return 0;
 }
