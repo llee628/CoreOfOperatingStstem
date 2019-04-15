@@ -14,7 +14,9 @@ typedef enum {
 } signal_t;
 
 typedef struct {
-    uint32_t regs[8];
+    uint32_t regs[10];
+    uint32_t irq_num;
+    uint32_t error;
     void *addr;
     uint32_t cs;
     uint32_t eflags;

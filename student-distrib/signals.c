@@ -46,7 +46,7 @@ void check_signals(iret_context_t *context) {
         if (task_pcb->signals & mask) {
             task_pcb->signals &= ~mask;
             uint32_t *user_esp = context->esp;
-            user_esp -= 5;
+            user_esp -= 17;
             iret_context_t *saved_context = (iret_context_t *) user_esp;
             *saved_context = *context;
 

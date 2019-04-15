@@ -305,7 +305,7 @@ int32_t _syscall_sigreturn(iret_context_t *context) {
     context->esp = saved_context->esp;
     context->addr = saved_context->addr;
     uint8_t i;
-    for (i = 0; i < 8; i ++) {
+    for (i = 0; i < 10; i ++) {
         context->regs[i] = saved_context->regs[i];
     }
     return 0;

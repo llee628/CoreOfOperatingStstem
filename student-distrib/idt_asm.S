@@ -64,115 +64,6 @@ EXCEPTION_JMP_TAB:
     .long mc
     .long xf
 
-# Exception 1st level handler
-# See IA-32 Manual p.145 for error code presence
-_de_isr:
-    push $0
-    push $0
-    jmp _exception_isr
-
-_db_isr:
-    push $0
-    push $1
-    jmp _exception_isr
-
-_nmi_isr:
-    push $0
-    push $2
-    jmp _exception_isr
-
-_bp_isr:
-    push $0
-    push $3
-    jmp _exception_isr
-
-_of_isr:
-    push $0
-    push $4
-    jmp _exception_isr
-
-_br_isr:
-    push $0
-    push $5
-    jmp _exception_isr
-
-_ud_isr:
-    push $0
-    push $6
-    jmp _exception_isr
-
-_nm_isr:
-    push $0
-    push $7
-    jmp _exception_isr
-
-_df_isr:
-    push $8
-    jmp _exception_isr
-
-_cso_isr:
-    push $0
-    push $9
-    jmp _exception_isr
-
-_ts_isr:
-    push $10
-    jmp _exception_isr
-
-_np_isr:
-    push $11
-    jmp _exception_isr
-
-_ss_isr:
-    push $12
-    jmp _exception_isr
-
-_gp_isr:
-    push $13
-    jmp _exception_isr
-
-_pf_isr:
-    push $14
-    jmp _exception_isr
-
-_mf_isr:
-    push $0
-    push $15
-    jmp _exception_isr
-
-_ac_isr:
-    push $16
-    jmp _exception_isr
-
-_mc_isr:
-    push $0
-    push $17
-    jmp _exception_isr
-
-_xf_isr:
-    push $0
-    push $18
-    jmp _exception_isr
-
-_exception_isr:
-    pusha
-    push 36(%esp)    // Copy the errorcode
-    push 36(%esp)    // IRQ num
-    call exception_handler
-    /* mov EXCEPTION_JMP_TAB(, %eax, 4), %eax */
-    /* call *%eax */
-    /* mov %eax, 32(%esp)    // Store eax back to the stored regs */
-    jmp _exception_isr__return
-
-_exception_isr__error:
-    movl $-1, 32(%esp)
-
-_exception_isr__return:
-    add $8, %esp
-    popa
-    add $8, %esp     // Pop original errorcode and IRQ
-    jmp iret_to_user
-
 SYSCALL_JMP_TAB:
     .long syscall_halt
     .long syscall_execute
@@ -185,29 +76,6 @@ SYSCALL_JMP_TAB:
     .long syscall_set_handler
     .long syscall_sigreturn
     .long syscall_malloc
-
-# Syscall
-_syscall_isr:
-    pusha
-    push %edx
-    push %ecx
-    push %ebx
-    cmp $1, %eax
-    jl _syscall_isr__error
-    cmp $11, %eax
-    jg _syscall_isr__error
-    sub $1, %eax
-    mov SYSCALL_JMP_TAB(, %eax, 4), %eax
-    call *%eax
-    jmp _syscall_isr__return
-
-_syscall_isr__error:
-    mov $-1, %eax
-_syscall_isr__return:
-    add $12, %esp
-    mov %eax, 28(%esp)
-    popa
-    jmp iret_to_user
 
 # Interrupt 1st level handlers
 PIC_ISR_jmp_tab:
@@ -228,102 +96,83 @@ PIC_ISR_jmp_tab:
     .long db                // 14     Primary ATA Hard Disk
     .long db                // 15     Secondary ATA Hard Disk
 
-PIC_ISR:
-    pusha
-    mov 32(%esp), %eax
-    mov PIC_ISR_jmp_tab(, %eax, 4), %eax
-    call *%eax
-    cmpl $8, 32(%esp)
-    jge PIC_ISR__slave_EOI
-    mov $0x20, %al
-    outb %al, $0x20
-    jmp PIC_ISR__end
+/* _exception_isr: */
+/*     pusha */
+/*     push 36(%esp)    // Copy the errorcode */
+/*     push 36(%esp)    // IRQ num */
+/*     call exception_handler */
+/*     jmp _exception_isr__return */
 
-PIC_ISR__slave_EOI:
-    mov $0x20, %al
-    outb %al, $0x20
-    outb %al, $0xA0
+/* _exception_isr__error: */
+/*     movl $-1, 32(%esp) */
 
-PIC_ISR__end:
-    popa
-    add $4, %esp     // Pop IRQ num
-    jmp iret_to_user
+/* _exception_isr__return: */
+/*     add $8, %esp */
+/*     popa */
+/*     add $8, %esp     // Pop original errorcode and IRQ */
+/*     jmp iret_to_user */
 
-_pti_isr:    // 0     Programmable Interrupt Timer Interrupt
+# Syscall
+_syscall_isr:
     push $0
-    jmp PIC_ISR
+    push $0
+    jmp common_isr
 
-_kb_isr:    // 1     Keyboard Interrupt
-    push $1
-    jmp PIC_ISR
+/* syscall_isr: */
+/*     pusha */
+/*     push %edx */
+/*     push %ecx */
+/*     push %ebx */
+/*     cmp $1, %eax */
+/*     jl _syscall_isr__error */
+/*     cmp $11, %eax */
+/*     jg _syscall_isr__error */
+/*     sub $1, %eax */
+/*     mov SYSCALL_JMP_TAB(, %eax, 4), %eax */
+/*     call *%eax */
+/*     jmp _syscall_isr__return */
 
-_cas_isr:    // 2     Cascade (used internally by the two PICs. never raised)
-    push $2
-    jmp PIC_ISR
+/* _syscall_isr__error: */
+/*     mov $-1, %eax */
+/* _syscall_isr__return: */
+/*     add $12, %esp */
+/*     mov %eax, 28(%esp) */
+/*     popa */
+/*     jmp iret_to_user */
 
-_com2_isr:    // 3     COM2 (if enabled)
-    push $3
-    jmp PIC_ISR
+/* PIC_ISR: */
+/*     pusha */
+/*     mov 32(%esp), %eax */
+/*     mov PIC_ISR_jmp_tab(, %eax, 4), %eax */
+/*     call *%eax */
+/*     cmpl $8, 32(%esp) */
+/*     jge PIC_ISR__slave_EOI */
+/*     mov $0x20, %al */
+/*     outb %al, $0x20 */
+/*     jmp PIC_ISR__end */
 
-_com1_isr:    // 4     COM1 (if enabled)
-    push $4
-    jmp PIC_ISR
+/* PIC_ISR__slave_EOI: */
+/*     mov $0x20, %al */
+/*     outb %al, $0x20 */
+/*     outb %al, $0xA0 */
 
-_lpt2_isr:    // 5     LPT2 (if enabled)
-    push $5
-    jmp PIC_ISR
+/* PIC_ISR__end: */
+/*     popa */
+/*     add $4, %esp     // Pop IRQ num */
+/*     jmp iret_to_user */
 
-_flop_isr:    // 6     Floppy Disk
-    push $6
-    jmp PIC_ISR
-
-_lpt1_isr:    // 7     LPT1 / Unreliable "spurious" interrupt (usually)
-    push $7
-    jmp PIC_ISR
-
-_rtc_isr:    // 8     CMOS real-time clock (if enabled)
-    push $8
-    jmp PIC_ISR
-
-_free1_isr:    // 9     Free for peripherals / legacy SCSI / NIC
-    push $9
-    jmp PIC_ISR
-
-_free2_isr:    // 10     Free for peripherals / SCSI / NIC
-    push $10
-    jmp PIC_ISR
-
-_free3_isr:    // 11     Free for peripherals / SCSI / NIC
-    push $11
-    jmp PIC_ISR
-
-_ps2m_isr:    // 12     PS2 Mouse
-    push $12
-    jmp PIC_ISR
-
-_fpu_isr:    // 13     FPU / Coprocessor / Inter-processor
-    push $13
-    jmp PIC_ISR
-
-_hd1_isr:    // 14     Primary ATA Hard Disk
-    push $14
-    jmp PIC_ISR
-
-_hd2_isr:    // 15     Secondary ATA Hard Disk
-    push $15
-    jmp PIC_ISR
 
 syscall_sigreturn:
     /* pusha */
     // 28(%esp) is pushed %eax, 48(%esp) is start of IRET context
     mov %esp, %eax
     // 8 words for pusha, 1 for return addr, 3 for syscall args, 8 for pusha in syscall_isr
-    add $16, %eax
+    add $4, %eax
     push %eax
     call _syscall_sigreturn
     add $4, %esp
-    /* popa */
-    mov 44(%esp), %eax
+    mov 28(%esp), %eax
+    /* mov 44(%esp), %eax */
     ret
 
 sigreturn_linkage:
@@ -331,13 +180,264 @@ sigreturn_linkage:
     mov $10, %eax
     int $0x80
 
-iret_to_user:
-    pusha
-    // 28(%esp) is pushed %eax, 48(%esp) is start of IRET context
+/* iret_to_user: */
+/*     pusha */
+/*     // 28(%esp) is pushed %eax, 48(%esp) is start of IRET context */
+/*     mov %esp, %eax */
+/*     /1* add $32, %eax *1/ */
+/*     push %eax */
+/*     call check_signals */
+/*     add $4, %esp */
+/*     popa */
+/*     iret */
+
+common_isr:
+    push %fs
+    push %es
+    push %ds
+    push %eax
+    push %ebp
+    push %edi
+    push %esi
+    push %edx
+    push %ecx
+    push %ebx
+    mov %esp, %ebp
+
+    cmp $0, 40(%ebp)
+    jg common_isr__handle_exception
+    jl common_isr__handle_pic
+
+common_isr__handle_syscall:
+    cmp $1, %eax
+    jl common_isr__syscall_error
+    cmp $11, %eax
+    jg common_isr__syscall_error
+    sub $1, %eax
+    mov SYSCALL_JMP_TAB(, %eax, 4), %eax
+    call *%eax
+    mov %eax, 24(%ebp)
+    jmp common_isr__return
+
+common_isr__syscall_error:
+    movl $-1, 24(%ebp)
+    jmp common_isr__return
+
+common_isr__handle_exception:
+    push 44(%ebp)
+    push 40(%ebp)
+    sub $1, (%esp)
+    call exception_handler
+    add $8, %esp
+    jmp common_isr__return
+
+common_isr__handle_pic:
+    mov 40(%ebp), %eax
+    neg %eax
+    sub $1, %eax
+    push %eax
+    mov PIC_ISR_jmp_tab(, %eax, 4), %eax
+    call *%eax
+    pop %eax
+    cmpl $8, %eax
+    jge common_isr__pic_slave_eoi
+    mov $0x20, %al
+    outb %al, $0x20
+    jmp common_isr__return
+
+common_isr__pic_slave_eoi:
+    mov $0x20, %al
+    outb %al, $0x20
+    outb %al, $0xA0
+    jmp common_isr__return
+
+common_isr__return:
     mov %esp, %eax
-    /* add $32, %eax */
     push %eax
     call check_signals
     add $4, %esp
-    popa
+
+    pop %ebx
+    pop %ecx
+    pop %edx
+    pop %esi
+    pop %edi
+    pop %ebp
+    pop %eax
+    pop %ds
+    pop %es
+    pop %fs
+    add $8, %esp
     iret
+
+
+
+_pti_isr:    // 0     Programmable Interrupt Timer Interrupt
+    push $0
+    push $-1
+    jmp common_isr
+
+_kb_isr:    // 1     Keyboard Interrupt
+    push $0
+    push $-2
+    jmp common_isr
+
+_cas_isr:    // 2     Cascade (used internally by the two PICs. never raised)
+    push $0
+    push $-3
+    jmp common_isr
+
+_com2_isr:    // 3     COM2 (if enabled)
+    push $0
+    push $-4
+    jmp common_isr
+
+_com1_isr:    // 4     COM1 (if enabled)
+    push $0
+    push $-5
+    jmp common_isr
+
+_lpt2_isr:    // 5     LPT2 (if enabled)
+    push $0
+    push $-6
+    jmp common_isr
+
+_flop_isr:    // 6     Floppy Disk
+    push $0
+    push $-7
+    jmp common_isr
+
+_lpt1_isr:    // 7     LPT1 / Unreliable "spurious" interrupt (usually)
+    push $0
+    push $-8
+    jmp common_isr
+
+_rtc_isr:    // 8     CMOS real-time clock (if enabled)
+    push $0
+    push $-9
+    jmp common_isr
+
+_free1_isr:    // 9     Free for peripherals / legacy SCSI / NIC
+    push $0
+    push $-10
+    jmp common_isr
+
+_free2_isr:    // 10     Free for peripherals / SCSI / NIC
+    push $0
+    push $-11
+    jmp common_isr
+
+_free3_isr:    // 11     Free for peripherals / SCSI / NIC
+    push $0
+    push $-12
+    jmp common_isr
+
+_ps2m_isr:    // 12     PS2 Mouse
+    push $0
+    push $-13
+    jmp common_isr
+
+_fpu_isr:    // 13     FPU / Coprocessor / Inter-processor
+    push $0
+    push $-14
+    jmp common_isr
+
+_hd1_isr:    // 14     Primary ATA Hard Disk
+    push $0
+    push $-15
+    jmp common_isr
+
+_hd2_isr:    // 15     Secondary ATA Hard Disk
+    push $0
+    push $-16
+    jmp common_isr
+
+# Exception 1st level handler
+# See IA-32 Manual p.145 for error code presence
+_de_isr:
+    push $0
+    push $1
+    jmp common_isr
+
+_db_isr:
+    push $0
+    push $2
+    jmp common_isr
+
+_nmi_isr:
+    push $0
+    push $3
+    jmp common_isr
+
+_bp_isr:
+    push $0
+    push $4
+    jmp common_isr
+
+_of_isr:
+    push $0
+    push $5
+    jmp common_isr
+
+_br_isr:
+    push $0
+    push $6
+    jmp common_isr
+
+_ud_isr:
+    push $0
+    push $7
+    jmp common_isr
+
+_nm_isr:
+    push $0
+    push $8
+    jmp common_isr
+
+_df_isr:
+    push $9
+    jmp common_isr
+
+_cso_isr:
+    push $0
+    push $10
+    jmp common_isr
+
+_ts_isr:
+    push $11
+    jmp common_isr
+
+_np_isr:
+    push $12
+    jmp common_isr
+
+_ss_isr:
+    push $13
+    jmp common_isr
+
+_gp_isr:
+    push $14
+    jmp common_isr
+
+_pf_isr:
+    push $15
+    jmp common_isr
+
+_mf_isr:
+    push $0
+    push $16
+    jmp common_isr
+
+_ac_isr:
+    push $17
+    jmp common_isr
+
+_mc_isr:
+    push $0
+    push $18
+    jmp common_isr
+
+_xf_isr:
+    push $0
+    push $19
+    jmp common_isr
