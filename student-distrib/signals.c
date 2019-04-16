@@ -29,7 +29,7 @@ void sighandler_kill_task() {
     do_syscall(1, 0, 0, 0);
 }
 
-void check_signals(iret_context_t *context) {
+void check_signals(hw_context_t *context) {
     PCB_t *task_pcb = get_cur_pcb();
     if (!task_pcb->signals) {
         return;
@@ -47,7 +47,7 @@ void check_signals(iret_context_t *context) {
             task_pcb->signals &= ~mask;
             uint32_t *user_esp = context->esp;
             user_esp -= 17;
-            iret_context_t *saved_context = (iret_context_t *) user_esp;
+            hw_context_t *saved_context = (hw_context_t *) user_esp;
             *saved_context = *context;
 
             user_esp -= 1;

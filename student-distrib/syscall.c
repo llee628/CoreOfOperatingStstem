@@ -11,7 +11,6 @@ static uint8_t pid_used[MAX_PROC_NUM] = {0};
 int32_t syscall_halt(uint8_t status) {
     // Revert info from PCB
     PCB_t *task_pcb = get_cur_pcb();
-    // TODO close files
     PCB_t *parent_pcb = task_pcb->parent;
     if (parent_pcb) {
         int32_t ppid = parent_pcb->pid;
@@ -159,6 +158,7 @@ syscall_execute__parse_args:;
         "movl %1, %%eax;" // User ESP
         "push %%eax;"
         "pushf;"
+        "orl $0x200, (%%esp);"
         "movl %2, %%eax;" // User CS
         "push %%eax;"
         "movl %3, %%eax;" // Entry point
@@ -313,9 +313,9 @@ int32_t syscall_set_handler(int32_t signum, void* handler) {
     return 0;
 }
 
-int32_t _syscall_sigreturn(iret_context_t *context) {
+int32_t _syscall_sigreturn(hw_context_t *context) {
     uint32_t *user_esp = context->esp;
-    iret_context_t *saved_context = (iret_context_t *) user_esp;
+    hw_context_t *saved_context = (hw_context_t *) user_esp;
     context->esp = saved_context->esp;
     context->addr = saved_context->addr;
     uint8_t i;
@@ -325,53 +325,75 @@ int32_t _syscall_sigreturn(iret_context_t *context) {
     return 0;
 }
 
-// Memory allocation is done by setting up a memory bitmap right after the
-// PCB, with every bit denoting if a 32-bit word has been allocated or not.
-// Another counter would take note of the stack growth when `malloc' is
-// called, so that new heap allocation will not overwrite the stack.
-// However, stack overwriting the heap is not protected.
 int32_t syscall_malloc(uint32_t size) {
-    /* size = size / 4 + 1;  // size in words */
-    /* uint32_t *bitmap_word = (uint32_t *) PCB_SIZE; */
-    /* uint8_t bitmap_bit = 0; */
-    /* while (bitmap_word < (uint32_t *) HEAP_START) { */
-    /*     if (*bitmap_word != 0xFFFFFFFF) {   // at least 1 entry is available */
-    /*         goto size_check; */
-    /*     } */
-    /*     bitmap_word ++; */
-    /*     goto next_probe_cycle; */
+    uint8_t *obj_ptr = (uint8_t *) HEAP_START;
+    uint16_t i;
+    uint32_t total_empty_size = 0;
+    for (i = 0; i < malloc_obj_count; i ++) {
+        uint32_t obj_block_size = malloc_objs[i].size;
+        uint32_t obj_size = obj_block_size * MALLOC_BLOCK_SIZE;
+        if (!malloc_objs[i].used) {
+            if (size < obj_size) {
+                if (malloc_obj_count == MALLOC_OBJ_NUM) {
+                    return NULL;
+                }
+                uint16_t j;
+                for (j = malloc_obj_count; j >= i; j --) {
+                    malloc_objs[j + 1] = malloc_objs[j];
+                }
+                malloc_objs[i].used = 1;
+                malloc_objs[i].size = (size / 32) + 1;
+                malloc_objs[i + 1].size = obj_block_size - malloc_objs[i].size;
+                malloc_obj_count ++;
+                return (int32_t) obj_ptr;
+            }
+            if (size > obj_size) {
+                total_empty_size += obj_size;
+                goto probe_next_obj;
+            }
 
-/* size_check:; */
-    /*     for (uint8_t i = bitmap_bit; i < 32; i ++) { */
-    /*         if (!(*bitmap_word & (1 << i))) {   // the first 0 */
-    /*             bitmap_bit = i; */
-    /*         } */
-    /*     } */
+            malloc_objs[i].used = 1;
+            return (int32_t) obj_ptr;
+        }
+probe_next_obj:
+        obj_ptr += malloc_objs[i].size * MALLOC_BLOCK_SIZE;
+    }
 
-    /*     // Size check */
-    /*     size -= (32 - bitmap_bit); */
-    /*     uint32_t *bitmap_word_end = bitmap_word + 1; */
-    /*     uint32_t word_count = 0; */
-    /*     while (size > 32 && bitmap_word_end < (uint32_t *) HEAP_START) { */
-    /*         if (*bitmap_word_end != 0x00) { */
-    /*             bitmap_word = bitmap_word_end; */
-    /*             bitmap_bit ++; */
-    /*             goto next_probe_cycle; */
-    /*         } */
-    /*         size -= 32; */
-    /*         bitmap_word_end ++; */
-    /*     } */
-    /*     for (uint8_t i = 0; i < 32; i ++) { */
-    /*         if (size && (*bitmap_word_end & (1 << i))) { */
-    /*             bitmap_bit = i + 1; */
-    /*             bitmap_word = bitmap_word_end; */
-    /*             goto next_probe_cycle; */
-    /*         } */
-    /*     } */
+    return NULL;
+}
 
-    /*     // Size check complete; allocate the memory TODO */
-/* next_probe_cycle:; */
-    /* } */
+int32_t syscall_free(uint8_t *ptr) {
+    if (!ptr) {
+        return 0;
+    }
+    uint8_t *obj_ptr = (uint8_t *) HEAP_START;
+    uint16_t i;
+    for (i = 0; i < malloc_obj_count && ptr > obj_ptr; i ++) {
+        obj_ptr += malloc_objs[i].size * MALLOC_BLOCK_SIZE;
+    }
+    if (obj_ptr != ptr) {
+        return -1;
+    }
+
+    uint16_t empty_size = malloc_objs[i].size;
+    uint8_t move = 0;
+    if (i < malloc_obj_count && !malloc_objs[i + 1].used) {
+        move ++;
+        empty_size += malloc_objs[i + 1].size;
+    }
+    if (i > 0 && malloc_objs[i - 1].used == 0) {
+        move ++;
+        empty_size += malloc_objs[i + 1].size;
+        i --;
+    }
+
+    malloc_obj_count -= move;
+    uint16_t j;
+    for (j = i + 1; j < malloc_obj_count; j ++) {
+        malloc_objs[j] = malloc_objs[j + move];
+    }
+    malloc_objs[i].used = 0;
+    malloc_objs[i].size = empty_size;
 
     return 0;
 }

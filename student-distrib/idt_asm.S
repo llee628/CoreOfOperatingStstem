@@ -76,6 +76,7 @@ SYSCALL_JMP_TAB:
     .long syscall_set_handler
     .long syscall_sigreturn
     .long syscall_malloc
+    .long syscall_free
 
 # Interrupt 1st level handlers
 PIC_ISR_jmp_tab:
@@ -96,100 +97,25 @@ PIC_ISR_jmp_tab:
     .long db                // 14     Primary ATA Hard Disk
     .long db                // 15     Secondary ATA Hard Disk
 
-/* _exception_isr: */
-/*     pusha */
-/*     push 36(%esp)    // Copy the errorcode */
-/*     push 36(%esp)    // IRQ num */
-/*     call exception_handler */
-/*     jmp _exception_isr__return */
-
-/* _exception_isr__error: */
-/*     movl $-1, 32(%esp) */
-
-/* _exception_isr__return: */
-/*     add $8, %esp */
-/*     popa */
-/*     add $8, %esp     // Pop original errorcode and IRQ */
-/*     jmp iret_to_user */
-
 # Syscall
 _syscall_isr:
     push $0
     push $0
     jmp common_isr
 
-/* syscall_isr: */
-/*     pusha */
-/*     push %edx */
-/*     push %ecx */
-/*     push %ebx */
-/*     cmp $1, %eax */
-/*     jl _syscall_isr__error */
-/*     cmp $11, %eax */
-/*     jg _syscall_isr__error */
-/*     sub $1, %eax */
-/*     mov SYSCALL_JMP_TAB(, %eax, 4), %eax */
-/*     call *%eax */
-/*     jmp _syscall_isr__return */
-
-/* _syscall_isr__error: */
-/*     mov $-1, %eax */
-/* _syscall_isr__return: */
-/*     add $12, %esp */
-/*     mov %eax, 28(%esp) */
-/*     popa */
-/*     jmp iret_to_user */
-
-/* PIC_ISR: */
-/*     pusha */
-/*     mov 32(%esp), %eax */
-/*     mov PIC_ISR_jmp_tab(, %eax, 4), %eax */
-/*     call *%eax */
-/*     cmpl $8, 32(%esp) */
-/*     jge PIC_ISR__slave_EOI */
-/*     mov $0x20, %al */
-/*     outb %al, $0x20 */
-/*     jmp PIC_ISR__end */
-
-/* PIC_ISR__slave_EOI: */
-/*     mov $0x20, %al */
-/*     outb %al, $0x20 */
-/*     outb %al, $0xA0 */
-
-/* PIC_ISR__end: */
-/*     popa */
-/*     add $4, %esp     // Pop IRQ num */
-/*     jmp iret_to_user */
-
-
 syscall_sigreturn:
-    /* pusha */
-    // 28(%esp) is pushed %eax, 48(%esp) is start of IRET context
-    mov %esp, %eax
-    // 8 words for pusha, 1 for return addr, 3 for syscall args, 8 for pusha in syscall_isr
-    add $4, %eax
+    // Skip the return addr
+    lea 4(%esp), %eax
     push %eax
     call _syscall_sigreturn
     add $4, %esp
     mov 28(%esp), %eax
-    /* mov 44(%esp), %eax */
     ret
 
 sigreturn_linkage:
     add $4, %esp
     mov $10, %eax
     int $0x80
-
-/* iret_to_user: */
-/*     pusha */
-/*     // 28(%esp) is pushed %eax, 48(%esp) is start of IRET context */
-/*     mov %esp, %eax */
-/*     /1* add $32, %eax *1/ */
-/*     push %eax */
-/*     call check_signals */
-/*     add $4, %esp */
-/*     popa */
-/*     iret */
 
 common_isr:
     push %fs
@@ -211,7 +137,7 @@ common_isr:
 common_isr__handle_syscall:
     cmp $1, %eax
     jl common_isr__syscall_error
-    cmp $11, %eax
+    cmp $12, %eax
     jg common_isr__syscall_error
     sub $1, %eax
     mov SYSCALL_JMP_TAB(, %eax, 4), %eax

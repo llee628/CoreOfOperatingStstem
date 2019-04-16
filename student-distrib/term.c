@@ -1,6 +1,7 @@
 #include "term.h"
 #include "kb.h"
 #include "lib.h"
+#include "syscall.h"
 
 // Buffer need to include the newline, so this one reserves space for the newline
 #define TERM_BUF_SIZE 127
@@ -277,9 +278,11 @@ void term_key_handler(key_t key) {
 
             case 'c':      // C-C; keyboard interrupt
                 puts("^C");
-                term_read_done = 1;
-                term_buf_count = 0;
-                break;
+                PCB_t *task_pcb = get_cur_pcb();
+                task_pcb->signals |= SIG_FLAG(SIG_KB_INT);
+                /* term_read_done = 1; */
+                /* term_buf_count = 0; */
+                return;
 
             case 'm':      // C-M / C-J; Return
                 term_read_done = 1;

@@ -22,7 +22,7 @@ typedef struct {
     uint32_t eflags;
     void *esp;
     uint32_t ds;
-} __attribute__ ((packed)) iret_context_t;
+} __attribute__ ((packed)) hw_context_t;
 
 #define SIG_FLAG(s) (1 << s)
 
@@ -32,7 +32,7 @@ sighandler_t *def_signal_handlers[SIG_SIZE];
 sighandler_t sighandler_kill_task;
 sighandler_t sighandler_ignore;
 
-void check_signals(iret_context_t *context);
+void check_signals(hw_context_t *context);
 extern int sigreturn_linkage();
 void init_signals();
 
