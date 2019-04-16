@@ -64,16 +64,22 @@ syscall_execute__parse_args:;
     while (*args == ' ') {
         args ++;
     }
+    if (*args == 0) {
+        args = 0;
+    }
 
     // 2. Copy the command itself so we have a guaranteed null-terminated string
     // Also copy the arguments
     int8_t filename[i + 1];
-    uint8_t arg_len = strlen(args);
-    int8_t copied_args[arg_len + 1];
     strncpy(filename, command, i + 1);
-    strncpy(copied_args, args, arg_len + 1);
     filename[i] = 0;
-    copied_args[arg_len] = 0;
+
+    uint8_t arg_len = args ? strlen(args) : 0;
+    int8_t copied_args[arg_len + 1];
+    if (args) {
+        strncpy(copied_args, args, arg_len + 1);
+        copied_args[arg_len] = 0;
+    }
 
     int32_t entry_addr;
     // 3. Check executable format and load task image
@@ -122,7 +128,7 @@ syscall_execute__parse_args:;
     for (i = 2; i < TASK_MAX_FILES; i ++) {
         task_pcb->open_files[i].flags.used = 0;
     }
-    task_pcb->cmd_args = copied_args;
+    task_pcb->cmd_args = args ? copied_args : NULL;
     asm volatile ("movl %%ebp, %0;" : "=r" (task_pcb->prev_ebp));
     asm volatile ("movl %%esp, %0;" : "=r" (task_pcb->prev_esp));
     PCB_t *parent_pcb = (PCB_t *) ((uint32_t) task_pcb->prev_esp & (uint32_t) KSTACK_TOP_MASK);
@@ -170,15 +176,15 @@ syscall_execute__parse_args:;
 }
 
 int32_t syscall_read(int32_t fd, void *buf, uint32_t nbytes) {
+    if (!buf) {
+        return -1;
+    }
+
     if (fd == 0) {
         return term_read(buf, nbytes, NULL);
     }
 
-    if (fd == 1) {
-        return -1;
-    }
-
-    if (fd >= TASK_MAX_FILES) {
+    if (fd == 1 || fd >= TASK_MAX_FILES) {
         return -1;
     }
 
@@ -191,16 +197,16 @@ int32_t syscall_read(int32_t fd, void *buf, uint32_t nbytes) {
 }
 
 int32_t syscall_write(int32_t fd, const void *buf, uint32_t nbytes) {
-    if (fd == 0) {
+    if (!buf) {
+        return -1;
+    }
+
+    if (fd == 0 || fd >= TASK_MAX_FILES) {
         return -1;
     }
 
     if (fd == 1) {
         return term_write(buf, nbytes, NULL);
-    }
-
-    if (fd >= TASK_MAX_FILES) {
-        return -1;
     }
 
     PCB_t *task_pcb = get_cur_pcb();
@@ -251,6 +257,10 @@ int32_t syscall_open(const int8_t* filename) {
 }
 
 int32_t syscall_close(int32_t fd) {
+    if (fd < 2 || fd >= TASK_MAX_FILES) {
+        return -1;
+    }
+
     PCB_t *task_pcb = get_cur_pcb();
     if (!task_pcb->open_files[fd].flags.used) {
         return -1;
@@ -269,6 +279,10 @@ int32_t syscall_getargs(int8_t* buf, uint32_t nbytes) {
         return -1;
     }
     PCB_t *task_pcb = get_cur_pcb();
+    if (!task_pcb->cmd_args) {
+        return -1;
+    }
+
     if (nbytes < strlen(task_pcb->cmd_args) + 1) {
         return -1;
     }
