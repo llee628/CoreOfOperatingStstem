@@ -2,7 +2,7 @@
 #include "i8259.h"
 
 
-void pit_init(){
+void init_pit(){
     // Calculate 30 millisecond timer interrupt
     int32_t set_30MS = CLOCK_TICK_RATE / 33HZ_DIV;
     // Set pit mode to a square wave
