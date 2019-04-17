@@ -7,12 +7,12 @@
 
 // Each block has a size of 32-bytes, and the allocator will only allocate
 // multiples of blocks
-// Total amount of heap is 1MB, with a max block number of 2K (so total map
-// size = 4K)
+// Total amount of heap is 256K, so it doesn't collide with program code
 // A size of 0 means it has *1* block; used blocks can be ajacent to each
 // other (as they represent deifferent allocated objects), but unused
 // blocks can't. Each object can only have 1 block.
 #define MALLOC_MAP_SIZE 4096
+#define MALLOC_HEAP_SIZE (256 * 1024 / 32)
 #define MALLOC_OBJ_NUM 2048
 #define MALLOC_BLOCK_SIZE 32
 #define MALLOC_HEAP_MAP_START (TASK_VIRT_PAGE_BEG + PCB_SIZE)
@@ -21,10 +21,6 @@ typedef struct {
     uint16_t used : 1;
     uint16_t size : 15;
 } __attribute__((packed)) malloc_obj_t;
-
-malloc_obj_t *malloc_objs = (malloc_obj_t *) MALLOC_HEAP_MAP_START;
-// Total number of objects; unused objects are counted
-uint32_t malloc_obj_count = 1;
 
 int32_t syscall_halt(uint8_t status);
 int32_t syscall_execute(const int8_t *command);

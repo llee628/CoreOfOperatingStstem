@@ -60,6 +60,8 @@ typedef struct PCB_s {
     uint8_t *prev_ebp;
     int8_t signals;
     uint8_t pid;
+    // Total number of objects; unused objects are counted
+    uint32_t malloc_obj_count;
 } PCB_t;
 
 #endif /* ifndef _TASK_H_ */

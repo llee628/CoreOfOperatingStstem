@@ -7,6 +7,7 @@
 #include "x86_desc.h"
 
 static uint8_t pid_used[MAX_PROC_NUM] = {0};
+malloc_obj_t *malloc_objs = (malloc_obj_t *) MALLOC_HEAP_MAP_START;
 
 int32_t syscall_halt(uint8_t status) {
     // Revert info from PCB
@@ -138,9 +139,9 @@ syscall_execute__parse_args:;
     }
     task_pcb->pid = pid;
     task_pcb->signals = 0;
-
-    // Prepare heap bitmap
-    memset((void *) (TASK_VIRT_PAGE_BEG + PCB_SIZE), 0, HEAP_BITMAP_SIZE);
+    task_pcb->malloc_obj_count = 1;
+    malloc_objs[0].used = 0;
+    malloc_objs[0].size = MALLOC_HEAP_SIZE;
 
     tss.esp0 = TASK_KSTACK_BOT(pid);
     tss.ss0 = KERNEL_DS;
@@ -329,22 +330,23 @@ int32_t syscall_malloc(uint32_t size) {
     uint8_t *obj_ptr = (uint8_t *) HEAP_START;
     uint16_t i;
     uint32_t total_empty_size = 0;
-    for (i = 0; i < malloc_obj_count; i ++) {
+    PCB_t *task_pcb = get_cur_pcb();
+    for (i = 0; i < task_pcb->malloc_obj_count; i ++) {
         uint32_t obj_block_size = malloc_objs[i].size;
         uint32_t obj_size = obj_block_size * MALLOC_BLOCK_SIZE;
         if (!malloc_objs[i].used) {
             if (size < obj_size) {
-                if (malloc_obj_count == MALLOC_OBJ_NUM) {
+                if (task_pcb->malloc_obj_count == MALLOC_OBJ_NUM) {
                     return NULL;
                 }
                 uint16_t j;
-                for (j = malloc_obj_count; j >= i; j --) {
+                for (j = task_pcb->malloc_obj_count; j >= i; j --) {
                     malloc_objs[j + 1] = malloc_objs[j];
                 }
                 malloc_objs[i].used = 1;
                 malloc_objs[i].size = (size / 32) + 1;
                 malloc_objs[i + 1].size = obj_block_size - malloc_objs[i].size;
-                malloc_obj_count ++;
+                task_pcb->malloc_obj_count ++;
                 return (int32_t) obj_ptr;
             }
             if (size > obj_size) {
@@ -368,7 +370,8 @@ int32_t syscall_free(uint8_t *ptr) {
     }
     uint8_t *obj_ptr = (uint8_t *) HEAP_START;
     uint16_t i;
-    for (i = 0; i < malloc_obj_count && ptr > obj_ptr; i ++) {
+    PCB_t *task_pcb = get_cur_pcb();
+    for (i = 0; i < task_pcb->malloc_obj_count && ptr > obj_ptr; i ++) {
         obj_ptr += malloc_objs[i].size * MALLOC_BLOCK_SIZE;
     }
     if (obj_ptr != ptr) {
@@ -377,7 +380,7 @@ int32_t syscall_free(uint8_t *ptr) {
 
     uint16_t empty_size = malloc_objs[i].size;
     uint8_t move = 0;
-    if (i < malloc_obj_count && !malloc_objs[i + 1].used) {
+    if (i < task_pcb->malloc_obj_count && !malloc_objs[i + 1].used) {
         move ++;
         empty_size += malloc_objs[i + 1].size;
     }
@@ -387,9 +390,9 @@ int32_t syscall_free(uint8_t *ptr) {
         i --;
     }
 
-    malloc_obj_count -= move;
+    task_pcb->malloc_obj_count -= move;
     uint16_t j;
-    for (j = i + 1; j < malloc_obj_count; j ++) {
+    for (j = i + 1; j < task_pcb->malloc_obj_count; j ++) {
         malloc_objs[j] = malloc_objs[j + move];
     }
     malloc_objs[i].used = 0;
