@@ -157,6 +157,8 @@ void entry(unsigned long magic, unsigned long addr) {
     i8259_init();
     /* Init the RTC */
     init_rtc();
+    /* Init the PIT */
+    //init_pit();
     /* Init the keyboard */
 	init_kb();
     init_term();
