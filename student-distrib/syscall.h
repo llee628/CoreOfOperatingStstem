@@ -33,7 +33,7 @@ int32_t syscall_vidmap(uint8_t **screen_start);
 int32_t syscall_set_handler(int32_t signum, void *handler);
 extern int32_t syscall_sigreturn(void);
 int32_t _syscall_sigreturn(hw_context_t *context);
-int32_t syscall_malloc(uint32_t size);
+uint8_t *syscall_malloc(uint32_t size);
 PCB_t *get_cur_pcb();
 int32_t do_syscall(int32_t call, int32_t a, int32_t b, int32_t c);
 

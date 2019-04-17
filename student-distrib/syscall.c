@@ -326,7 +326,7 @@ int32_t _syscall_sigreturn(hw_context_t *context) {
     return 0;
 }
 
-int32_t syscall_malloc(uint32_t size) {
+uint8_t *syscall_malloc(uint32_t size) {
     uint8_t *obj_ptr = (uint8_t *) HEAP_START;
     uint16_t i;
     uint32_t total_empty_size = 0;
@@ -347,7 +347,7 @@ int32_t syscall_malloc(uint32_t size) {
                 malloc_objs[i].size = (size / 32) + 1;
                 malloc_objs[i + 1].size = obj_block_size - malloc_objs[i].size;
                 task_pcb->malloc_obj_count ++;
-                return (int32_t) obj_ptr;
+                return obj_ptr;
             }
             if (size > obj_size) {
                 total_empty_size += obj_size;
@@ -355,7 +355,7 @@ int32_t syscall_malloc(uint32_t size) {
             }
 
             malloc_objs[i].used = 1;
-            return (int32_t) obj_ptr;
+            return obj_ptr;
         }
 probe_next_obj:
         obj_ptr += malloc_objs[i].size * MALLOC_BLOCK_SIZE;
