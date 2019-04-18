@@ -1,8 +1,14 @@
 #include "scheduling.h"
 #include "i8259.h"
+#include "idt.h"
 
 
 void init_pit(){
+
+    // Set interrupt handler
+    SET_IDT_ENTRY(idt[PIT_INT], _pti_isr);
+    idt[PIT_INT].present = 1;
+
     // Calculate 30 millisecond timer interrupt
     int32_t set_30MS = CLOCK_TICK_RATE / 33HZ_DIV;
     // Set pit mode to a square wave
@@ -11,6 +17,7 @@ void init_pit(){
     outb(set_30MS & 0xFF, PIT_DATA0_PORT);
     // Set high bits
     outb(set_30MS >> 8, PIT_DATA0_PORT);
+
     enable_irq(PIT_IRQNUM);
 }
 
