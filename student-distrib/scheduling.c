@@ -2,6 +2,11 @@
 #include "i8259.h"
 #include "idt.h"
 
+#DEFINE   8MB     0x800000
+#DEFINE   8KB     0x2000
+
+// Global variables
+int active_term = 0;
 
 void init_pit(){
 
@@ -22,5 +27,36 @@ void init_pit(){
 }
 
 void pit_isr(){
+    cli();
+    send_eoi(PIT_IRQNUM);
+
+    uint8_t next_pid;
+    PCB_t* cur_proc = get_cur_pcb();
+
+    // Sanity check
+    if(!cur_proc)
+      return;
+
+    /* Assuming statically implemented terminals */
+    active_term = (active_term + 1) % 3;
+    next_pid = cur_proc_term[active_term];
+
+    /* Return if there is no other process to schedule */
+    if( next_pid == -1 || cur_proc->pid == next_pid)
+      return;
+
+    PCB_t* next_proc = TASK_KSTACK_TOP(next_pid);
+
+    /* Setup next process's paging */
+    page_directory[USER_PAGE_INDEX].page_PDE.page_addr = TASK_PAGE_INDEX(next_pid);
+    /* Flush TLB */
+    asm volatile(
+        " movl %0, %%cr3; "
+        :
+        : "r"(page_directory)
+    );
+
+    tss.esp0 = TASK_KSTACK_BOT(next_pid);
+
 
 }

@@ -10,6 +10,7 @@
 #include "task.h"
 #include "lib.h"
 #include "syscall.h"
+#include "page.h"
 
 #DEFINE   CLOCK_TICK_RATE   1193182
 #DEFINE   33HZ_DIV            36157

@@ -24,6 +24,9 @@
 #define MAX_PROC_NUM 32
 
 #define PCB_SIZE sizeof(PCB_t)
+// So 64 * 1024 * 32 = 2097152 = 2 MB of heap available, leaving < 2 MB of stack space
+#define HEAP_BITMAP_SIZE (64 * 1024)
+#define HEAP_START (PCB_SIZE + HEAP_BITMAP_SIZE)
 
 typedef enum {
     TASK_FILE_REG,
@@ -61,5 +64,8 @@ typedef struct PCB_s {
     int8_t signals;
     uint8_t pid;
 } PCB_t;
+
+
+extern int cur_proc_term[3];
 
 #endif /* ifndef _TASK_H_ */
