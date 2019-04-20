@@ -27,7 +27,7 @@ void init_pit(){
 }
 
 void pit_isr(){
-    cli();
+    /* Send an eoi first as always */
     send_eoi(PIT_IRQNUM);
 
     uint8_t next_pid;
@@ -37,12 +37,13 @@ void pit_isr(){
     if(!cur_proc)
       return;
 
-    /* Assuming statically implemented terminals */
+    do{
     active_term = (active_term + 1) % 3;
     next_pid = cur_proc_term[active_term];
+  } while( !next_pid )
 
     /* Return if there is no other process to schedule */
-    if( next_pid == -1 || cur_proc->pid == next_pid)
+    if(cur_proc->pid == next_pid)
       return;
 
     PCB_t* next_proc = TASK_KSTACK_TOP(next_pid);
@@ -56,7 +57,24 @@ void pit_isr(){
         : "r"(page_directory)
     );
 
+    /* save current esp and ebp */
+    asm volatile(
+        " movl %%esp, %0; "
+        " movl %%ebp, %0; "
+        :
+        :
+    )
+
+    /* Restore next process's esp and ebp */
+    asm volatile(
+        " movl %0, %%esp; "
+        " movl %1, &&ebp; "
+        :
+        : "r"()
+    )
+
     tss.esp0 = TASK_KSTACK_BOT(next_pid);
+    tss.ss0 = KERNEL_DS;
 
 
 }
