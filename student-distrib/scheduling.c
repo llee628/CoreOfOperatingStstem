@@ -60,7 +60,7 @@ void pit_isr(){
     /* save current esp and ebp */
     asm volatile(
         " movl %%esp, %0; "
-        " movl %%ebp, %0; "
+        " movl %%ebp, %1; "
         :
         :
     )

@@ -158,7 +158,7 @@ void entry(unsigned long magic, unsigned long addr) {
     /* Init the RTC */
     init_rtc();
     /* Init the PIT */
-    //init_pit();
+    init_pit();
     /* Init the keyboard */
 	init_kb();
     init_term();
