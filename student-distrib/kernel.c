@@ -15,6 +15,7 @@
 #include "term.h"
 #include "file_sys.h"
 #include "signals.h"
+#include "scheduling.h"
 
 extern int32_t do_syscall(int32_t a, int32_t b, int32_t c, int32_t d);
 
@@ -158,23 +159,13 @@ void entry(unsigned long magic, unsigned long addr) {
     /* Init the RTC */
     init_rtc();
     /* Init the PIT */
-    init_pit();
     /* Init the keyboard */
 	init_kb();
-    init_term();
-	init_signals();
-
     /* Init the File System */
     fs_init(bblock_addr);
-
-
-    /* Initialize devices, memory, filesystem, enable device interrupts on the
-     * PIC, any other initialization stuff... */
-
-    /* Enable interrupts */
-    /* Do not enable the following until after you have set up your
-     * IDT correctly otherwise QEMU will triple fault and simple close
-     * without showing you any output */
+    init_term();
+	init_signals();
+    init_pit();
 
 	int i;
 	for (i = 0; i < 16; i ++) {
@@ -190,9 +181,8 @@ void entry(unsigned long magic, unsigned long addr) {
     /* Run tests */
     launch_tests();
 #else
-	while (1) {
-		do_syscall(2, (int32_t) (uint8_t *) "shell", 0, 0);
-	}
+	_syscall_execute((int32_t) (uint8_t *) "shell", 0);
+	/* do_syscall(2, (int32_t) (uint8_t *) "shell", 0, 0); */
 #endif
 	while (1) {
 		asm volatile ("hlt;");

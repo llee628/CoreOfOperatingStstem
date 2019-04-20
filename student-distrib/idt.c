@@ -4,6 +4,7 @@
 #include "task.h"
 #include "signals.h"
 #include "syscall.h"
+#include "term.h"
 
 void exception_handler(uint32_t irq_num, uint32_t errorcode) {
     if (irq_num == 14) {    // PF

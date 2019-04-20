@@ -3,18 +3,11 @@
 #include "lib.h"
 #include "syscall.h"
 
-// Buffer need to include the newline, so this one reserves space for the newline
-#define TERM_BUF_SIZE 127
-#define TERM_BUF_SIZE_W_NL 128
-char term_buf[TERM_BUF_SIZE_W_NL];
-uint8_t term_buf_count = 0;
-uint8_t term_read_done = 0;
-uint8_t term_curpos = 0;
-// Don't echo the character to the screen
-uint8_t term_noecho = 0;
-// canonical operation; don't buffer the inputs
-uint8_t term_canon = 0;
-int cur_x_store, cur_y_store;
+term_t terms[TERM_NUM];
+uint8_t cur_term_ind = 0;
+term_t *cur_term = terms;
+static uint8_t attr = DEF_ATTR;
+static uint8_t* video_mem = (uint8_t *)VIDEO;
 
 // File ops table
 file_ops_table_t term_file_ops_table = {
@@ -40,31 +33,31 @@ int32_t term_read(int8_t* buf, uint32_t nbytes, FILE *file) {
     if (!buf) {
         return -1;
     }
-    if (term_canon) {
+    if (cur_term->term_canon) {
         sti();
-        while (!term_buf_count) {
+        while (!cur_term->term_buf_count) {
             asm volatile ("hlt");
         }
         cli();
-        memcpy(buf, term_buf, 1);
-        term_curpos = 1;
+        memcpy(buf, cur_term->term_buf, 1);
+        cur_term->term_curpos = 1;
         delch();
         return 1;
     } else {
         sti();
-        while (!term_read_done) {
+        while (!cur_term->term_read_done) {
             asm volatile ("hlt");
         }
         cli();
-        if (!term_noecho) {
+        if (!cur_term->term_noecho) {
             putc('\n');
         }
-        term_buf[term_buf_count++] = '\n';
-        int copy_count = nbytes < term_buf_count ? nbytes : term_buf_count;
-        memcpy(buf, term_buf, copy_count);
-        term_buf_count = 0;
-        term_read_done = 0;
-        term_curpos = 0;
+        cur_term->term_buf[cur_term->term_buf_count++] = '\n';
+        int copy_count = nbytes < cur_term->term_buf_count ? nbytes : cur_term->term_buf_count;
+        memcpy(buf, cur_term->term_buf, copy_count);
+        cur_term->term_buf_count = 0;
+        cur_term->term_read_done = 0;
+        cur_term->term_curpos = 0;
         return copy_count;
     }
 }
@@ -100,15 +93,15 @@ void esc_funcs(uint8_t f, uint8_t *args, uint8_t arg_len) {
         // Save cursor position
         case 'e':
             if (!arg_len) {
-                cur_x_store = getposx();
-                cur_y_store = getposy();
+                cur_term->cur_x_store = getposx();
+                cur_term->cur_y_store = getposy();
             }
             break;
 
         // Restore cursor position
         case 'r':
             if (!arg_len) {
-                setpos(cur_x_store, cur_y_store);
+                setpos(cur_term->cur_x_store, cur_term->cur_y_store);
             }
             break;
 
@@ -124,8 +117,8 @@ void esc_funcs(uint8_t f, uint8_t *args, uint8_t arg_len) {
             setting = f == 's';
             if (arg_len) {
                 switch (args[0]) {
-                    case 1: term_noecho = setting; break;
-                    case 2: term_canon = setting; break;
+                    case 1: cur_term->term_noecho = setting; break;
+                    case 2: cur_term->term_canon = setting; break;
                     case 3:
                         if (setting) {
                             // Cursor scanline ends at 0; no cursor
@@ -200,9 +193,51 @@ int32_t term_write(const int8_t* buf, uint32_t nbytes, FILE *file) {
     return nbytes;
 }
 
+void switch_term(uint8_t ind) {
+    if (ind == cur_term_ind) {
+        return;
+    }
+
+    // Save old terminal
+    PCB_t *task_pcb = get_cur_pcb();
+    cur_term->cur_pid = task_pcb->pid;
+    memcpy(cur_term->video_buffer, video_mem, VID_MEM_SIZE);
+    cur_term->video_mem = cur_term->video_buffer;
+
+    // Put on new terminal
+    cur_term_ind = ind;
+    cur_term = &terms[ind];
+    cur_term->video_mem = video_mem;
+
+    if (!cur_term->cur_pid) {
+        /* cur_term->used = 1; */
+        clear();
+        _syscall_execute("shell", ind);       // TODO
+    } else {
+        memcpy(video_mem, cur_term->video_buffer, VID_MEM_SIZE);
+        uint8_t target_pid = cur_term->cur_pid;
+        PCB_t *target_pcb = (PCB_t *) TASK_KSTACK_TOP(target_pid);
+
+        uint32_t target_ebp = (uint32_t) target_pcb->ebp;
+        uint32_t target_esp = (uint32_t) target_pcb->esp;
+        asm volatile (
+            "movl %0, %%eax;"
+            "movl %1, %%ecx;"
+            "movl %%eax, %%ebp;"
+            "movl %%ecx, %%esp;"
+            "sti;"
+            /* "jmp 1f;" */
+            :
+            : "m" (target_ebp), "m" (target_esp)
+            : "%eax", "%ecx"
+        );
+        return;
+    }
+}
+
 void term_key_handler(key_t key) {
-    if (term_canon) {    // Canonical mode
-        term_curpos = term_buf_count;
+    if (cur_term->term_canon) {    // Canonical mode
+        cur_term->term_curpos = cur_term->term_buf_count;
         addch(key.key);
         return;
     }
@@ -211,63 +246,63 @@ void term_key_handler(key_t key) {
     if (key.modifiers == MOD_CTRL) {     // Non-printable; probably a control character
         switch (key.key) {
             case 'l':      // C-L; clear
-                for (i = 0; i < term_curpos; i ++) {
+                for (i = 0; i < cur_term->term_curpos; i ++) {
                     back();
                 }
                 for (i = getposy(); i > 0; i --) {
                     scroll();
                 }
-                for (i = 0; i < term_curpos; i ++) {
+                for (i = 0; i < cur_term->term_curpos; i ++) {
                     forward();
                 }
                 break;
 
             case 'b':      // C-B; char back
-                if (term_curpos > 0) {
-                    term_curpos --;
+                if (cur_term->term_curpos > 0) {
+                    cur_term->term_curpos --;
                     back();
                 }
                 break;
 
             case 'f':      // C-F; char forward
-                if (term_curpos < term_buf_count) {
-                    term_curpos ++;
+                if (cur_term->term_curpos < cur_term->term_buf_count) {
+                    cur_term->term_curpos ++;
                     forward();
                 }
                 break;
 
             case 'a':      // C-A; start of line
-                while (term_curpos > 0) {
-                    term_curpos --;
+                while (cur_term->term_curpos > 0) {
+                    cur_term->term_curpos --;
                     back();
                 }
                 break;
 
             case 'e':      // C-E; end of line
-                while (term_curpos < term_buf_count) {
-                    term_curpos ++;
+                while (cur_term->term_curpos < cur_term->term_buf_count) {
+                    cur_term->term_curpos ++;
                     forward();
                 }
                 break;
 
             case 'w':      // C-W; kill word
-                if (!term_curpos) {
+                if (!cur_term->term_curpos) {
                     break;
                 }
 
-                if (isalnum(term_buf[term_curpos - 1])) {
-                    while (term_curpos && isalnum(term_buf[term_curpos - 1])) {
+                if (isalnum(cur_term->term_buf[cur_term->term_curpos - 1])) {
+                    while (cur_term->term_curpos && isalnum(cur_term->term_buf[cur_term->term_curpos - 1])) {
                         delch();
                     }
                 } else {
-                    while (term_curpos && !isalnum(term_buf[term_curpos - 1])) {
+                    while (cur_term->term_curpos && !isalnum(cur_term->term_buf[cur_term->term_curpos - 1])) {
                         delch();
                     }
                 }
                 break;
 
             case 'u':      // C-U; kill line
-                while (term_curpos > 0) {
+                while (cur_term->term_curpos > 0) {
                     delch();
                 }
                 break;
@@ -285,44 +320,48 @@ void term_key_handler(key_t key) {
                 return;
 
             case 'm':      // C-M / C-J; Return
-                term_read_done = 1;
+                cur_term->term_read_done = 1;
                 break;
         }
     } else if (key.modifiers == MOD_ALT) { // An alt'd character
         switch (key.key) {
+            case KEY_F1: case KEY_F2: case KEY_F3:
+                switch_term(key.key - KEY_F1);
+                break;
+
             case 'b':      // M-B; word back
-                if (!term_curpos) {
+                if (!cur_term->term_curpos) {
                     break;
                 }
 
-                if (isalnum(term_buf[term_curpos - 1])) {
-                    while (term_curpos && isalnum(term_buf[term_curpos - 1])) {
-                        term_curpos --;
+                if (isalnum(cur_term->term_buf[cur_term->term_curpos - 1])) {
+                    while (cur_term->term_curpos && isalnum(cur_term->term_buf[cur_term->term_curpos - 1])) {
+                        cur_term->term_curpos --;
                         back();
                     }
                 } else {
-                    while (term_curpos && !isalnum(term_buf[term_curpos - 1])) {
-                        term_curpos --;
+                    while (cur_term->term_curpos && !isalnum(cur_term->term_buf[cur_term->term_curpos - 1])) {
+                        cur_term->term_curpos --;
                         back();
                     }
                 }
                 break;
 
             case 'f':      // M-F; word forward
-                if (term_curpos >= term_buf_count) {
+                if (cur_term->term_curpos >= cur_term->term_buf_count) {
                     break;
                 }
 
-                if (isalnum(term_buf[term_curpos])) {
-                    while ((term_curpos < term_buf_count)
-                            && isalnum(term_buf[term_curpos])) {
-                        term_curpos ++;
+                if (isalnum(cur_term->term_buf[cur_term->term_curpos])) {
+                    while ((cur_term->term_curpos < cur_term->term_buf_count)
+                            && isalnum(cur_term->term_buf[cur_term->term_curpos])) {
+                        cur_term->term_curpos ++;
                         forward();
                     }
                 } else {
-                    while ((term_curpos < term_buf_count)
-                            && !isalnum(term_buf[term_curpos])) {
-                        term_curpos ++;
+                    while ((cur_term->term_curpos < cur_term->term_buf_count)
+                            && !isalnum(cur_term->term_buf[cur_term->term_curpos])) {
+                        cur_term->term_curpos ++;
                         forward();
                     }
                 }
@@ -347,19 +386,19 @@ void term_key_handler(key_t key) {
 
 // Add a character to the line buf after the current cursor position
 void addch(uint8_t ch) {
-    if (term_buf_count < TERM_BUF_SIZE) {
+    if (cur_term->term_buf_count < TERM_BUF_SIZE) {
         int i;
-        for (i = term_buf_count; i > term_curpos; i --) {
-            term_buf[i] = term_buf[i - 1];
+        for (i = cur_term->term_buf_count; i > cur_term->term_curpos; i --) {
+            cur_term->term_buf[i] = cur_term->term_buf[i - 1];
         }
-        term_buf[term_curpos++] = ch;
-        term_buf_count ++;
-        if (!term_noecho) {
+        cur_term->term_buf[cur_term->term_curpos++] = ch;
+        cur_term->term_buf_count ++;
+        if (!cur_term->term_noecho) {
             putc(ch);
-            for (i = term_curpos; i < term_buf_count; i ++) {
-                putc(term_buf[i]);
+            for (i = cur_term->term_curpos; i < cur_term->term_buf_count; i ++) {
+                putc(cur_term->term_buf[i]);
             }
-            for (i = term_buf_count - term_curpos; i > 0; i --) {
+            for (i = cur_term->term_buf_count - cur_term->term_curpos; i > 0; i --) {
                 back();
             }
         }
@@ -368,18 +407,18 @@ void addch(uint8_t ch) {
 
 // delete a character from the line buf before the current cursor position
 void delch() {
-    if (term_curpos > 0) {
+    if (cur_term->term_curpos > 0) {
         int i;
-        for (i = term_curpos - 1; i < term_buf_count - 1; i ++) {
-            term_buf[i] = term_buf[i + 1];
+        for (i = cur_term->term_curpos - 1; i < cur_term->term_buf_count - 1; i ++) {
+            cur_term->term_buf[i] = cur_term->term_buf[i + 1];
         }
-        term_curpos --;
-        term_buf_count --;
-        if (!term_canon) {
+        cur_term->term_curpos --;
+        cur_term->term_buf_count --;
+        if (!cur_term->term_canon) {
             back();
             int old_x = getposx(), old_y = getposy();
-            for (i = term_curpos; i < term_buf_count; i ++) {
-                putc(term_buf[i]);
+            for (i = cur_term->term_curpos; i < cur_term->term_buf_count; i ++) {
+                putc(cur_term->term_buf[i]);
             }
             putc(' ');
             setpos(old_x, old_y);
@@ -387,9 +426,312 @@ void delch() {
     }
 }
 
+
 void init_term() {
     cli();
     outb(0x0A, 0x3D4); outb(0x00, 0x3D5);   // Enable cursor; cursor scanline start at 0
     outb(0x0B, 0x3D4); outb(0x0F, 0x3D5);   // No cursor skew; cursor scanline ends at 15 => blocky cursors
+    
+    /* init_proc("shell", 0); */
+    /* init_proc("shell", 1); */
+    /* init_proc("shell", 2); */
+
     sti();
+}
+
+int getposx() {
+	return cur_term->cur_x;
+}
+
+int getposy() {
+	return cur_term->cur_y;
+}
+
+/* void clear();
+ * Inputs: void
+ * Return Value: none
+ * Function: Clears video memory */
+void clear() {
+    int32_t i;
+    for (i = 0; i < NUM_ROWS * NUM_COLS; i++) {
+        *(uint8_t *)(video_mem + (i << 1)) = ' ';
+        *(uint8_t *)(video_mem + (i << 1) + 1) = attr;
+    }
+}
+
+/* void setpos(int x, int y);
+ * Inputs: int x, y: position of cursor to set to
+ * Return Value: void
+ *  Function: Set the cursor position */
+void setpos(int x, int y) {
+	if (x < 0) {
+		x = 0;
+	} else if (x >= NUM_COLS) {
+		x = NUM_COLS - 1;
+	}
+	if (y < 0) {
+		y = 0;
+	} else if (y >= NUM_ROWS) {
+		y = NUM_ROWS - 1;
+	}
+
+	cur_term->cur_x = x;
+	cur_term->cur_y = y;
+
+	// Set VGA cursor position
+	uint16_t curpos = cur_term->cur_x + cur_term->cur_y * NUM_COLS;
+	outb(0x0F, 0x3D4);
+	outb(curpos & 0xFF, 0x3D5);
+	outb(0x0E, 0x3D4);
+	outb((curpos >> 8) & 0xFF, 0x3D5);
+}
+
+/* void setattr(uint8_t _attr);
+ * Inputs: uint_8 _attr: Attribute to set
+ * Return Value: void
+ *  Function: Set the attribute of following prints to _attr */
+void setattr(uint8_t _attr) {
+	attr = _attr;
+}
+
+uint8_t getattr() {
+	return attr;
+}
+
+/* Standard printf().
+ * Only supports the following format strings:
+ * %%  - print a literal '%' character
+ * %x  - print a number in hexadecimal
+ * %u  - print a number as an unsigned integer
+ * %d  - print a number as a signed integer
+ * %c  - print a character
+ * %s  - print a string
+ * %#x - print a number in 32-bit aligned hexadecimal, i.e.
+ *       print 8 hexadecimal digits, zero-padded on the left.
+ *       For example, the hex number "E" would be printed as
+ *       "0000000E".
+ *       Note: This is slightly different than the libc specification
+ *       for the "#" modifier (this implementation doesn't add a "0x" at
+ *       the beginning), but I think it's more flexible this way.
+ *       Also note: %x is the only conversion specifier that can use
+ *       the "#" modifier to alter output. */
+int32_t printf(int8_t *format, ...) {
+
+    /* Pointer to the format string */
+    int8_t* buf = format;
+
+    /* Stack pointer for the other parameters */
+    int32_t* esp = (void *)&format;
+    esp++;
+
+    while (*buf != '\0') {
+        switch (*buf) {
+            case '%':
+                {
+                    int32_t alternate = 0;
+                    buf++;
+
+format_char_switch:
+                    /* Conversion specifiers */
+                    switch (*buf) {
+                        /* Print a literal '%' character */
+                        case '%':
+                            putc('%');
+                            break;
+
+                        /* Use alternate formatting */
+                        case '#':
+                            alternate = 1;
+                            buf++;
+                            /* Yes, I know gotos are bad.  This is the
+                             * most elegant and general way to do this,
+                             * IMHO. */
+                            goto format_char_switch;
+
+                        /* Print a number in hexadecimal form */
+                        case 'x':
+                            {
+                                int8_t conv_buf[64];
+                                if (alternate == 0) {
+                                    itoa(*((uint32_t *)esp), conv_buf, 16);
+                                    puts(conv_buf);
+                                } else {
+                                    int32_t starting_index;
+                                    int32_t i;
+                                    itoa(*((uint32_t *)esp), &conv_buf[8], 16);
+                                    i = starting_index = strlen(&conv_buf[8]);
+                                    while(i < 8) {
+                                        conv_buf[i] = '0';
+                                        i++;
+                                    }
+                                    puts(&conv_buf[starting_index]);
+                                }
+                                esp++;
+                            }
+                            break;
+
+                        /* Print a number in unsigned int form */
+                        case 'u':
+                            {
+                                int8_t conv_buf[36];
+                                itoa(*((uint32_t *)esp), conv_buf, 10);
+                                puts(conv_buf);
+                                esp++;
+                            }
+                            break;
+
+                        /* Print a number in signed int form */
+                        case 'd':
+                            {
+                                int8_t conv_buf[36];
+                                int32_t value = *((int32_t *)esp);
+                                if(value < 0) {
+                                    conv_buf[0] = '-';
+                                    itoa(-value, &conv_buf[1], 10);
+                                } else {
+                                    itoa(value, conv_buf, 10);
+                                }
+                                puts(conv_buf);
+                                esp++;
+                            }
+                            break;
+
+                        /* Print a single character */
+                        case 'c':
+                            putc((uint8_t) *((int32_t *)esp));
+                            esp++;
+                            break;
+
+                        /* Print a NULL-terminated string */
+                        case 's':
+                            puts(*((int8_t **)esp));
+                            esp++;
+                            break;
+
+                        default:
+                            break;
+                    }
+
+                }
+                break;
+
+            default:
+                putc(*buf);
+                break;
+        }
+        buf++;
+    }
+    return (buf - format);
+}
+
+/* int32_t puts(int8_t* s);
+ *   Inputs: int_8* s = pointer to a string of characters
+ *   Return Value: Number of bytes written
+ *   Function: Output a string to the console */
+int32_t puts(int8_t* s) {
+    register int32_t index = 0;
+    while (s[index] != '\0') {
+        putc(s[index]);
+        index++;
+    }
+    return index;
+}
+
+/* void get_vid_char(int x, int y);
+ * Inputs: int x, y: position of character to get
+ * Return Value: void
+ *  Function: get a character located at the input positions */
+uint8_t get_vid_char(int x, int y) {
+	if (x < 0 || x >= NUM_COLS || y < 0 || y >= NUM_ROWS) {
+		return 0;
+	}
+
+	return video_mem[(NUM_COLS * y + x) << 1];
+}
+
+/* void set_vid_char(int x, int y);
+ * Inputs: int x, y: position of character to set
+ * Return Value: void
+ *  Function: set a character located at the input positions */
+void set_vid_char(int x, int y, uint8_t ch) {
+	if (x < 0 || x >= NUM_COLS || y < 0 || y >= NUM_ROWS) {
+		return;
+	}
+
+	video_mem[(NUM_COLS * y + x) << 1] = ch;
+	video_mem[((NUM_COLS * y + x) << 1) + 1] = attr;
+}
+
+void scroll() {
+	cli();
+	int x, y;
+	uint8_t old_attr = attr;
+	for (y = 0; y < NUM_ROWS - 1; y ++) {
+		for (x = 0; x < NUM_COLS; x ++) {
+			// We want to copy the attributes as well
+			setattr(video_mem[((NUM_COLS * (y + 1) + x) << 1) + 1]);
+			set_vid_char(x, y, get_vid_char(x, y + 1));
+		}
+	}
+	setattr(DEF_ATTR);
+	for (x = 0; x < NUM_COLS; x ++) {
+		set_vid_char(x, NUM_ROWS - 1, ' ');
+	}
+	setpos(cur_term->cur_x, cur_term->cur_y - 1);
+	setattr(old_attr);
+	/* sti(); */
+}
+
+void back() {
+	cur_term->cur_x --;
+	if (cur_term->cur_x < 0) {
+		cur_term->cur_x += NUM_COLS;
+		cur_term->cur_y --;
+	}
+	setpos(cur_term->cur_x, cur_term->cur_y);
+}
+
+void forward() {
+	cur_term->cur_x ++;
+	if (cur_term->cur_x >= NUM_COLS) {
+		cur_term->cur_x -= NUM_COLS;
+		cur_term->cur_y ++;
+	}
+	setpos(cur_term->cur_x, cur_term->cur_y);
+}
+
+void putc(uint8_t c) {
+	switch (c) {
+		case '\n':
+			cur_term->cur_y ++;
+			cur_term->cur_x = 0;
+			if (cur_term->cur_y >= NUM_ROWS) {
+				scroll();
+				cur_term->cur_y = NUM_ROWS - 1;
+			}
+			break;
+
+		case '\r':
+			cur_term->cur_x = 0;
+			break;
+
+		case '\b':
+			back();
+			set_vid_char(cur_term->cur_x, cur_term->cur_y, ' ');
+			break;
+
+		default:
+			set_vid_char(cur_term->cur_x, cur_term->cur_y, c);
+			cur_term->cur_x++;
+			if (cur_term->cur_x >= NUM_COLS) {
+				cur_term->cur_x -= NUM_COLS;
+				cur_term->cur_y ++;
+			}
+			if (cur_term->cur_y >= NUM_ROWS) {
+				scroll();
+				cur_term->cur_y = NUM_ROWS - 1;
+			}
+			break;
+	}
+	setpos(cur_term->cur_x, cur_term->cur_y);
 }

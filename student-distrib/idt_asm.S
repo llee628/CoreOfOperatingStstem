@@ -142,6 +142,7 @@ common_isr__handle_syscall:
     sub $1, %eax
     mov SYSCALL_JMP_TAB(, %eax, 4), %eax
     call *%eax
+common_isr__switch_end:
     mov %eax, 24(%ebp)
     jmp common_isr__return
 

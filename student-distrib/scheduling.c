@@ -1,12 +1,13 @@
 #include "scheduling.h"
 #include "i8259.h"
 #include "idt.h"
+#include "x86_desc.h"
+#include "term.h"
 
-#DEFINE   8MB     0x800000
-#DEFINE   8KB     0x2000
+#define   _8MB     0x800000
+#define   _8KB     0x2000
 
 // Global variables
-int active_term = 0;
 
 void init_pit(){
 
@@ -15,7 +16,7 @@ void init_pit(){
     idt[PIT_INT].present = 1;
 
     // Calculate 30 millisecond timer interrupt
-    int32_t set_30MS = CLOCK_TICK_RATE / 33HZ_DIV;
+    int32_t set_30MS = CLOCK_TICK_RATE / _33HZ_DIV;
     // Set pit mode to a square wave
     outb(PIT_MODE3, PIT_CMD_REG);
     // Set low bits
@@ -35,21 +36,28 @@ void pit_isr(){
 
     // Sanity check
     if(!cur_proc)
-      return;
+        return;
 
-    do{
-    active_term = (active_term + 1) % 3;
-    next_pid = cur_proc_term[active_term];
-  } while( !next_pid )
+    /* do{ */
+    /*     active_term = (active_term + 1) % 3; */
+    /*     next_pid = terms[active_term].cur_pid; */
+    /* } while( !next_pid ); */
+    cur_term_ind ++;
+    if (!terms[cur_term_ind].cur_pid) {
+        _syscall_execute("shell", cur_term_ind);
+    }
 
     /* Return if there is no other process to schedule */
     if(cur_proc->pid == next_pid)
-      return;
+        return;
 
-    PCB_t* next_proc = TASK_KSTACK_TOP(next_pid);
+    PCB_t* next_proc = (PCB_t *) TASK_KSTACK_TOP(next_pid);
 
     /* Setup next process's paging */
     page_directory[USER_PAGE_INDEX].page_PDE.page_addr = TASK_PAGE_INDEX(next_pid);
+    tss.esp0 = TASK_KSTACK_BOT(next_pid);
+    cur_term_ind = next_proc->term_ind;
+    cur_term = &terms[cur_term_ind];
     /* Flush TLB */
     asm volatile(
         " movl %0, %%cr3; "
@@ -61,20 +69,14 @@ void pit_isr(){
     asm volatile(
         " movl %%esp, %0; "
         " movl %%ebp, %1; "
-        :
-        :
-    )
+        : "=m" (cur_proc->esp), "=m" (cur_proc->ebp)
+    );
 
     /* Restore next process's esp and ebp */
     asm volatile(
         " movl %0, %%esp; "
-        " movl %1, &&ebp; "
+        " movl %1, %%ebp; "
         :
-        : "r"()
-    )
-
-    tss.esp0 = TASK_KSTACK_BOT(next_pid);
-    tss.ss0 = KERNEL_DS;
-
-
+        : "m" (next_proc->esp), "m" (next_proc->ebp)
+    );
 }

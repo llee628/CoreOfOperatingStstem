@@ -6,13 +6,21 @@
 #include "file_sys.h"
 #include "x86_desc.h"
 
-static uint8_t pid_used[MAX_PROC_NUM] = {0};
+uint8_t pid_used[MAX_PROC_NUM] = {0};
 malloc_obj_t *malloc_objs = (malloc_obj_t *) MALLOC_HEAP_MAP_START;
 
 int32_t syscall_halt(uint8_t status) {
+    hw_context_t *context = (hw_context_t *) (((uint32_t *) &status) + 12);
     // Revert info from PCB
     PCB_t *task_pcb = get_cur_pcb();
     PCB_t *parent_pcb = task_pcb->parent;
+    if (!parent_pcb) {
+        uint32_t entry_addr;
+        entry_addr = *((int32_t *) (TASK_IMG_START_ADDR + ELF_ENTRY_OFFSET));
+        context->addr = (void *) entry_addr;
+        context->esp = (void *) TASK_VIRT_PAGE_END;
+        return 0;
+    }
     if (parent_pcb) {
         int32_t ppid = parent_pcb->pid;
         page_directory[USER_PAGE_INDEX].page_PDE.page_addr = TASK_PAGE_INDEX(ppid);
@@ -27,8 +35,8 @@ int32_t syscall_halt(uint8_t status) {
         );
     }
     pid_used[task_pcb->pid] = 0;
-    uint32_t prev_ebp = (uint32_t) task_pcb->prev_ebp;
-    uint32_t prev_esp = (uint32_t) task_pcb->prev_esp;
+    uint32_t prev_ebp = (uint32_t) parent_pcb->ebp;
+    uint32_t prev_esp = (uint32_t) parent_pcb->esp;
     asm volatile (
         "xorl %%ebx, %%ebx;"
         "movb %0, %%bl;"
@@ -46,7 +54,11 @@ int32_t syscall_halt(uint8_t status) {
     return 0;
 }
 
-int32_t syscall_execute(const int8_t* command) {
+int32_t syscall_execute(const int8_t *command) {
+    return _syscall_execute(command, -1);
+}
+
+int32_t _syscall_execute(const int8_t* command, int8_t term_ind) {
     int pid;
     for (pid = 1; pid < MAX_PROC_NUM; pid ++) {
         if (!pid_used[pid]) {
@@ -96,7 +108,7 @@ syscall_execute__parse_args:;
         return -1;
     }
 
-    entry_addr = *((int32_t *) (buf + 24));
+    entry_addr = *((int32_t *) (buf + ELF_ENTRY_OFFSET));
     // Check that the entry address is after the image starting point
     if (entry_addr < TASK_IMG_START_ADDR) {
         fs_file_close(&f);
@@ -124,24 +136,29 @@ syscall_execute__parse_args:;
     fs_file_close(&f);
 
     // 5. Setup PCB
+    PCB_t *cur_pcb = get_cur_pcb();
     PCB_t *task_pcb = (PCB_t *) TASK_KSTACK_TOP(pid);
     for (i = 2; i < TASK_MAX_FILES; i ++) {
         task_pcb->open_files[i].flags.used = 0;
     }
     task_pcb->cmd_args = args ? copied_args : NULL;
-    asm volatile ("movl %%ebp, %0;" : "=r" (task_pcb->prev_ebp));
-    asm volatile ("movl %%esp, %0;" : "=r" (task_pcb->prev_esp));
-    PCB_t *parent_pcb = (PCB_t *) ((uint32_t) task_pcb->prev_esp & (uint32_t) KSTACK_TOP_MASK);
-    if (parent_pcb != (PCB_t *) TASK_KSTACK_TOP(0)) {
-        task_pcb->parent = parent_pcb;
+    asm volatile ("movl %%ebp, %0;" : "=r" (cur_pcb->ebp));
+    asm volatile ("movl %%esp, %0;" : "=r" (cur_pcb->esp));
+    if (cur_pcb != (PCB_t *) TASK_KSTACK_TOP(0) && term_ind == -1) {
+        task_pcb->parent = cur_pcb;
     } else {
         task_pcb->parent = NULL;
     }
     task_pcb->pid = pid;
     task_pcb->signals = 0;
     task_pcb->malloc_obj_count = 1;
+    task_pcb->term_ind = term_ind != -1 ? term_ind : cur_pcb->term_ind;
     malloc_objs[0].used = 0;
     malloc_objs[0].size = MALLOC_HEAP_SIZE;
+
+    if (term_ind != -1) {
+        terms[(int) term_ind].cur_pid = pid;
+    }
 
     tss.esp0 = TASK_KSTACK_BOT(pid);
     tss.ss0 = KERNEL_DS;
@@ -297,7 +314,12 @@ int32_t syscall_vidmap(uint8_t** screen_start) {
         return -1;
     }
 
-    *screen_start = (uint8_t *) TASK_VIDMEM_START;
+    PCB_t *task_pcb = get_cur_pcb();
+    if (task_pcb->term_ind == cur_term_ind) {
+        *screen_start = TASK_VIDMEM_START;
+    } else {
+        *screen_start = terms[(int) task_pcb->term_ind].video_mem;
+    }
     return (int32_t) *screen_start;
 }
 
@@ -421,4 +443,170 @@ int32_t do_syscall(int32_t call, int32_t a, int32_t b, int32_t c) {
         : "%eax", "%ebx", "%ecx", "%edx"
     );
     return ret;
+}
+
+int32_t init_proc(const int8_t* command, int8_t term_ind) {
+    int pid;
+    for (pid = 1; pid < MAX_PROC_NUM; pid ++) {
+        if (!pid_used[pid]) {
+            goto syscall_execute__parse_args;
+        }
+    }
+    return -1;      // No usable pid
+
+syscall_execute__parse_args:;
+    int i;
+    for (i = 0; isalnum(command[i]); i ++);
+    const int8_t *args = command + i;
+
+    // 1. Setup arguments
+    while (*args == ' ') {
+        args ++;
+    }
+    if (*args == 0) {
+        args = 0;
+    }
+
+    // 2. Copy the command itself so we have a guaranteed null-terminated string
+    // Also copy the arguments
+    int8_t filename[i + 1];
+    strncpy(filename, command, i + 1);
+    filename[i] = 0;
+
+    uint8_t arg_len = args ? strlen(args) : 0;
+    int8_t copied_args[arg_len + 1];
+    if (args) {
+        strncpy(copied_args, args, arg_len + 1);
+        copied_args[arg_len] = 0;
+    }
+
+    int32_t entry_addr;
+    // 3. Check executable format and load task image
+    FILE f;
+    if (fs_open(filename, &f) == -1) {
+        return -1;
+    }
+
+    int8_t buf[BUF_SIZE];
+    int32_t read_size = fs_file_read(buf, BUF_SIZE, &f);
+    // Check for ELF magic
+    if (buf[0] != 0x7F || buf[1] != 'E' || buf[2] != 'L' || buf[3] != 'F') {
+        fs_file_close(&f);
+        return -1;
+    }
+
+    entry_addr = *((int32_t *) (buf + ELF_ENTRY_OFFSET));
+    // Check that the entry address is after the image starting point
+    if (entry_addr < TASK_IMG_START_ADDR) {
+        fs_file_close(&f);
+        return -1;
+    }
+
+    // 4. Setup paging; Set task's target page address
+    page_directory[USER_PAGE_INDEX].page_PDE.page_addr = TASK_PAGE_INDEX(pid);
+    // Reload the TLB
+    asm volatile(
+        " movl %0, %%cr3; "
+        :
+        : "r"(page_directory)
+    );
+
+    // Copy the rest of the image
+    uint8_t *task_img_cur = (uint8_t *) TASK_IMG_START_ADDR;
+    memcpy(task_img_cur, buf, read_size);
+    task_img_cur += read_size;
+    while ((read_size = fs_file_read(buf, BUF_SIZE, &f)) > 0) {
+        memcpy(task_img_cur, buf, read_size);
+        task_img_cur += read_size;
+    }
+
+    fs_file_close(&f);
+
+    // 5. Setup PCB
+    /* PCB_t *cur_pcb = get_cur_pcb(); */
+    PCB_t *task_pcb = (PCB_t *) TASK_KSTACK_TOP(pid);
+    for (i = 2; i < TASK_MAX_FILES; i ++) {
+        task_pcb->open_files[i].flags.used = 0;
+    }
+
+    asm volatile ("int $0x20;");
+    task_pcb->cmd_args = args ? copied_args : NULL;
+    /* asm volatile ("movl %%ebp, %0;" : "=r" (cur_pcb->ebp)); */
+    /* asm volatile ("movl %%esp, %0;" : "=r" (cur_pcb->esp)); */
+    /* if (cur_pcb != (PCB_t *) TASK_KSTACK_TOP(0) && term_ind == -1) { */
+    /*     task_pcb->parent = cur_pcb; */
+    /* } else { */
+        task_pcb->parent = NULL;
+    /* } */
+    task_pcb->pid = pid;
+    task_pcb->signals = 0;
+    task_pcb->malloc_obj_count = 1;
+    task_pcb->term_ind = term_ind;
+    task_pcb->esp = (void *) (TASK_KSTACK_BOT(pid) - sizeof(hw_context_t));
+    task_pcb->ebp = (void *) TASK_KSTACK_BOT(pid);
+    hw_context_t init_context;
+    init_context.addr = entry_addr;
+    init_context.esp = (void *) TASK_VIRT_PAGE_END;
+    init_context.cs = USER_CS;
+    init_context.ds = USER_DS;
+    asm volatile (
+        "pushf;"
+        "pop %%eax;"
+        "mov %%eax, %0"
+        : "=m" (init_context.eflags)
+        :
+        : "%eax"
+    );
+    *(hw_context_t *) task_pcb->esp = init_context;
+    task_pcb->esp = (void *) (TASK_KSTACK_BOT(pid) - 5 * sizeof(uint32_t));
+
+    terms[term_ind].cur_pid = pid;
+
+    /* malloc_objs[0].used = 0; */ // TODO
+    /* malloc_objs[0].size = MALLOC_HEAP_SIZE; */
+
+    /* if (term_ind != -1) { */
+    /*     terms[(int) term_ind].cur_pid = pid; */
+    /* } */
+
+    /* tss.esp0 = TASK_KSTACK_BOT(pid); */
+    /* tss.ss0 = KERNEL_DS; */
+
+    pid_used[pid] = 1;
+
+    page_directory[USER_PAGE_INDEX].page_PDE.page_addr = TASK_PAGE_INDEX(0);
+    // Reload the TLB
+    asm volatile(
+        " movl %0, %%cr3; "
+        :
+        : "r"(page_directory)
+    );
+
+
+    /* // 6. Context switch */
+    /* asm volatile ( */
+    /*     "movl %0, %%eax;"  // User DS */
+    /*     "movw %%ax, %%ds;" */
+    /*     "movw %%ax, %%es;" */
+    /*     "movw %%ax, %%fs;" */
+    /*     "movw %%ax, %%gs;" */
+    /*     "push %%eax;" */
+    /*     "movl %1, %%eax;" // User ESP */
+    /*     "push %%eax;" */
+    /*     "pushf;" */
+    /*     "orl $0x200, (%%esp);" */
+    /*     "movl %2, %%eax;" // User CS */
+    /*     "push %%eax;" */
+    /*     "movl %3, %%eax;" // Entry point */
+    /*     "push %%eax;" */
+    /*     "iret;" */
+/* "1:;" */
+    /*     : */
+    /*     : "r" (USER_DS), "r" (TASK_VIRT_PAGE_END), "r" (USER_CS), "r" (entry_addr) */
+    /*     : "%eax" */
+    /* ); */
+
+    /* int32_t retval; */
+    /* asm volatile ("movl %%ebx, %0;" : "=r" (retval)); */
+    /* return retval; */
 }
