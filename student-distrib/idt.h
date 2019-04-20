@@ -6,6 +6,7 @@
 #define SYSCALL_IDX     0x80
 
 // Interrupt indexes
+#define PIT_INT     0x20
 #define KB_INT			0x21
 #define SLAVE_PIC_INT	0x22
 #define RTC_INT 		0x28

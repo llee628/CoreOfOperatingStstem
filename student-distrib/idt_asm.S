@@ -80,7 +80,7 @@ SYSCALL_JMP_TAB:
 
 # Interrupt 1st level handlers
 PIC_ISR_jmp_tab:
-    .long db                // 0     Programmable Interrupt Timer Interrupt
+    .long pit_isr           // 0     Programmable Interrupt Timer Interrupt
     .long kb_isr            // 1     Keyboard Interrupt
     .long unreachable       // 2     Cascade (used internally by the two PICs. never raised)
     .long db                // 3     COM2 (if enabled)
