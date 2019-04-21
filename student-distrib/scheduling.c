@@ -42,9 +42,12 @@ void pit_isr(){
     /*     active_term = (active_term + 1) % 3; */
     /*     next_pid = terms[active_term].cur_pid; */
     /* } while( !next_pid ); */
-    cur_term_ind ++;
+    cur_term_ind = (cur_term_ind + 1) % 3;
     if (!terms[cur_term_ind].cur_pid) {
         _syscall_execute("shell", cur_term_ind);
+    }
+    else{
+      next_pid = terms[cur_term_ind].cur_pid;
     }
 
     /* Return if there is no other process to schedule */

@@ -167,7 +167,7 @@ void entry(unsigned long magic, unsigned long addr) {
 	init_signals();
     init_pit();
 
-	int i;
+/*	int i;
 	for (i = 0; i < 16; i ++) {
 		setattr(i);
 		printf("%x ", i);
@@ -176,13 +176,13 @@ void entry(unsigned long magic, unsigned long addr) {
 	}
 	setattr(DEF_ATTR);
 	putc('\n');
-
+*/
 #ifdef RUN_TESTS
     /* Run tests */
     launch_tests();
 #else
-	_syscall_execute((int32_t) (uint8_t *) "shell", 0);
-	/* do_syscall(2, (int32_t) (uint8_t *) "shell", 0, 0); */
+	//_syscall_execute((int32_t) (uint8_t *) "shell", 0);
+	 //do_syscall(2, (int32_t) (uint8_t *) "shell", 0, 0);
 #endif
 	while (1) {
 		asm volatile ("hlt;");
