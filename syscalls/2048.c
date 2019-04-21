@@ -492,6 +492,7 @@ start:
 end:
     //exit
     printf("\e[1;S\e[2;S");   // Reset terminal
+    printf ("\e[c\n");
     printf ("\e[r\n");          //restore cursor position
     return 0;
 }

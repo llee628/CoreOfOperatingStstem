@@ -7,8 +7,6 @@
 #define   _8MB     0x800000
 #define   _8KB     0x2000
 
-// Global variables
-
 void init_pit(){
 
     // Set interrupt handler
@@ -28,6 +26,8 @@ void init_pit(){
 }
 
 void pit_isr(){
+    static uint8_t cur_proc_ind = 0;
+
     /* Send an eoi first as always */
     send_eoi(PIT_IRQNUM);
 
@@ -42,12 +42,12 @@ void pit_isr(){
     /*     active_term = (active_term + 1) % 3; */
     /*     next_pid = terms[active_term].cur_pid; */
     /* } while( !next_pid ); */
-    cur_term_ind = (cur_term_ind + 1) % 3;
-    if (!terms[cur_term_ind].cur_pid) {
-        _syscall_execute("shell", cur_term_ind);
+    cur_proc_ind = (cur_proc_ind + 1) % 3;
+    if (!terms[cur_proc_ind].cur_pid) {
+        _syscall_execute("shell", cur_proc_ind);
     }
     else{
-      next_pid = terms[cur_term_ind].cur_pid;
+      next_pid = terms[cur_proc_ind].cur_pid;
     }
 
     /* Return if there is no other process to schedule */
@@ -59,8 +59,6 @@ void pit_isr(){
     /* Setup next process's paging */
     page_directory[USER_PAGE_INDEX].page_PDE.page_addr = TASK_PAGE_INDEX(next_pid);
     tss.esp0 = TASK_KSTACK_BOT(next_pid);
-    cur_term_ind = next_proc->term_ind;
-    cur_term = &terms[cur_term_ind];
     /* Flush TLB */
     asm volatile(
         " movl %0, %%cr3; "

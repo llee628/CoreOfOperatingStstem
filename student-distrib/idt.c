@@ -10,9 +10,9 @@ void exception_handler(uint32_t irq_num, uint32_t errorcode) {
     if (irq_num == 14) {    // PF
         uint32_t addr;
         asm volatile ("movl %%cr2, %0;" : "=r" (addr));
-        printf("exception: irq: %u, error: %u, addr: 0x%#x\n", irq_num, errorcode, addr);
+        printf(terms, "exception: irq: %u, error: %u, addr: 0x%#x\n", irq_num, errorcode, addr);
     } else {
-        printf("exception: irq: %u, error: %u\n", irq_num, errorcode);
+        printf(terms, "exception: irq: %u, error: %u\n", irq_num, errorcode);
     }
     PCB_t *task_pcb = get_cur_pcb();
     if (!irq_num) {     // Divide by zero
@@ -29,7 +29,7 @@ void exception_handler(uint32_t irq_num, uint32_t errorcode) {
  * being interrupted by anything else
  */
 void general_exceptions_handler(char* exception){
-	printf("%s \n", exception);
+	printf(terms, "%s \n", exception);
 	while(1);
 }
 
@@ -58,7 +58,7 @@ void gp(int32_t errorcode){ general_exceptions_handler("GENERAL PROTECTION"); }
 void pf(int32_t errorcode){
     uint32_t addr;
     asm volatile ("mov %%cr2, %0;" : "=r" (addr));
-    printf("PAGE FAULT: addr = %#x, error code = %#x\n", addr, errorcode);
+    printf(terms, "PAGE FAULT: addr = %#x, error code = %#x\n", addr, errorcode);
     while(1);
 }
 void mf(void){ general_exceptions_handler("X87 FPU FLOATING-POINT ERROR"); }
@@ -68,7 +68,7 @@ void xf(void){ general_exceptions_handler("SIMD FLOATING-POINT EXCEPTION"); }
 void unreachable(void){ general_exceptions_handler("\x1b""30UNREACHABLE!!!\x1b""70"); }
 
 /* temp function just to see if the index at 0x80 can be set*/
-void syscall_temp(void){ printf("In syscall_temp\n"); }
+void syscall_temp(void){ printf(terms, "In syscall_temp\n"); }
 
 /* Function creates everything as interrupt gates as recommended by descriptor doc
  * "For simplicity,use interrupt gates for everything"

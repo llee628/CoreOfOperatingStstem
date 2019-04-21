@@ -18,6 +18,7 @@ typedef struct {
     uint8_t term_curpos;
     int8_t cur_x, cur_y;
     int8_t cur_x_store, cur_y_store;
+    uint8_t attr;
 
     uint8_t *video_mem;
     uint8_t video_buffer[VID_MEM_SIZE];
@@ -46,17 +47,17 @@ int32_t term_read(int8_t* buf, uint32_t nbytes, FILE *file);
 int32_t term_open(const int8_t *filename, FILE *file);
 int32_t term_close();
 
-int32_t printf(int8_t *format, ...);
-void putc(uint8_t c);
-int32_t puts(int8_t *s);
-void scroll();
-void clear();
-void setpos(int x, int y);
-void setattr(uint8_t _attr);
-uint8_t getattr();
-int getposx();
-int getposy();
-void back();
-void forward();
+int32_t printf(term_t *cur_term, int8_t *format, ...);
+void putc(uint8_t c, term_t *cur_term);
+int32_t puts(int8_t *s, term_t *cur_term);
+void scroll(term_t *cur_term);
+void clear(term_t *cur_term);
+void setpos(int x, int y, term_t *cur_term);
+void setattr(uint8_t _attr, term_t *cur_term);
+uint8_t getattr(term_t *cur_term);
+int getposx(term_t *cur_term);
+int getposy(term_t *cur_term);
+void back(term_t *cur_term);
+void forward(term_t *cur_term);
 
 #endif
