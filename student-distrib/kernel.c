@@ -43,67 +43,11 @@ void entry(unsigned long magic, unsigned long addr) {
     /* Set MBI to the address of the Multiboot information structure. */
     mbi = (multiboot_info_t *) addr;
 
-    /* Print out the flags. */
-    /* printf(terms, "flags = 0x%#x\n", (unsigned)mbi->flags); */
-
-    /* Are mem_* valid? */
-    if (CHECK_FLAG(mbi->flags, 0))
-        /* printf(terms, "mem_lower = %uKB, mem_upper = %uKB\n", (unsigned)mbi->mem_lower, (unsigned)mbi->mem_upper); */
-
-    /* Is boot_device valid? */
-    if (CHECK_FLAG(mbi->flags, 1))
-        /* printf(terms, "boot_device = 0x%#x\n", (unsigned)mbi->boot_device); */
-
-    /* Is the command line passed? */
-    if (CHECK_FLAG(mbi->flags, 2))
-        /* printf(terms, "cmdline = %s\n", (char *)mbi->cmdline); */
-
-    if (CHECK_FLAG(mbi->flags, 3)) {
-        int mod_count = 0;
-        int i;
-        module_t* mod = (module_t*)mbi->mods_addr;
-        while (mod_count < mbi->mods_count) {
-            /* printf(terms, "Module %d loaded at address: 0x%#x\n", mod_count, (unsigned int)mod->mod_start); */
-            /* printf(terms, "Module %d ends at address: 0x%#x\n", mod_count, (unsigned int)mod->mod_end); */
-            /* printf(terms, "First few bytes of module:\n"); */
-            for (i = 0; i < 16; i++) {
-                /* printf(terms, "0x%x ", *((char*)(mod->mod_start+i))); */
-            }
-            /* printf(terms, "\n"); */
-            mod_count++;
-            mod++;
-        }
-    }
     /* Bits 4 and 5 are mutually exclusive! */
     if (CHECK_FLAG(mbi->flags, 4) && CHECK_FLAG(mbi->flags, 5)) {
         /* printf(terms, "Both bits 4 and 5 are set.\n"); */
         return;
     }
-
-    /* /1* Is the section header table of ELF valid? *1/ */
-    /* if (CHECK_FLAG(mbi->flags, 5)) { */
-    /*     elf_section_header_table_t *elf_sec = &(mbi->elf_sec); */
-    /*     printf(terms, "elf_sec: num = %u, size = 0x%#x, addr = 0x%#x, shndx = 0x%#x\n", */
-    /*             (unsigned)elf_sec->num, (unsigned)elf_sec->size, */
-    /*             (unsigned)elf_sec->addr, (unsigned)elf_sec->shndx); */
-    /* } */
-
-    /* /1* Are mmap_* valid? *1/ */
-    /* if (CHECK_FLAG(mbi->flags, 6)) { */
-    /*     memory_map_t *mmap; */
-    /*     printf(terms, "mmap_addr = 0x%#x, mmap_length = 0x%x\n", */
-    /*             (unsigned)mbi->mmap_addr, (unsigned)mbi->mmap_length); */
-    /*     for (mmap = (memory_map_t *)mbi->mmap_addr; */
-    /*             (unsigned long)mmap < mbi->mmap_addr + mbi->mmap_length; */
-    /*             mmap = (memory_map_t *)((unsigned long)mmap + mmap->size + sizeof (mmap->size))) */
-    /*         printf(terms, "    size = 0x%x, base_addr = 0x%#x%#x\n    type = 0x%x,  length    = 0x%#x%#x\n", */
-    /*                 (unsigned)mmap->size, */
-    /*                 (unsigned)mmap->base_addr_high, */
-    /*                 (unsigned)mmap->base_addr_low, */
-    /*                 (unsigned)mmap->type, */
-    /*                 (unsigned)mmap->length_high, */
-    /*                 (unsigned)mmap->length_low); */
-    /* } */
 
     /* Construct an LDT entry in the GDT */
     {
@@ -167,23 +111,6 @@ void entry(unsigned long magic, unsigned long addr) {
 	init_signals();
     init_pit();
 
-/*	int i;
-	for (i = 0; i < 16; i ++) {
-		setattr(i);
-		printf(terms, "%x ", i);
-		setattr(i << 4);
-		printf(terms, "%x ", i);
-	}
-	setattr(DEF_ATTR);
-	putc('\n');
-*/
-#ifdef RUN_TESTS
-    /* Run tests */
-    launch_tests();
-#else
-	//_syscall_execute((int32_t) (uint8_t *) "shell", 0);
-	 //do_syscall(2, (int32_t) (uint8_t *) "shell", 0, 0);
-#endif
 	while (1) {
 		asm volatile ("hlt;");
 	}

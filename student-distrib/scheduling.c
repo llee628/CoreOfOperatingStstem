@@ -4,9 +4,6 @@
 #include "x86_desc.h"
 #include "term.h"
 
-#define   _8MB     0x800000
-#define   _8KB     0x2000
-
 void init_pit(){
 
     // Set interrupt handler
@@ -38,10 +35,6 @@ void pit_isr(){
     if(!cur_proc)
         return;
 
-    /* do{ */
-    /*     active_term = (active_term + 1) % 3; */
-    /*     next_pid = terms[active_term].cur_pid; */
-    /* } while( !next_pid ); */
     cur_proc_ind = (cur_proc_ind + 1) % 3;
     if (!terms[cur_proc_ind].cur_pid) {
         _syscall_execute("shell", cur_proc_ind);

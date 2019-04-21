@@ -22,54 +22,6 @@ void exception_handler(uint32_t irq_num, uint32_t errorcode) {
     }
 }
 
-/* Function: general_exceptions_handler;
- * Inputs: exception - the string of which exception to print
- * Return Value: none
- * Description: Prints out the exception being thrown and stops the OS from
- * being interrupted by anything else
- */
-void general_exceptions_handler(char* exception){
-	printf(terms, "%s \n", exception);
-	while(1);
-}
-
-/* Functions: mnemonics (gotten from IA-32 manual) for the exception;
- * Inputs: none
- * Return Value: none
- * Description: Specific Handlers for each unique exception as described in the IA-32 manual
- *              They all pretty much act the same just different strings to pass
- * *Note: Much too lazy to write function headers for all 18 since they do the
- *        exact same thing but are necessary to be seperate
- */
-void de(void){ general_exceptions_handler("DIVIDE BY ZERO ERROR"); }
-void db(void){ general_exceptions_handler("INTEL RESERVED"); }
-void nmi(void){ general_exceptions_handler("NMI INTERRUPT"); }
-void bp(void){ general_exceptions_handler("BREAKPOINT"); }
-void of(void){ general_exceptions_handler("OVERFLOW"); }
-void br(void){ general_exceptions_handler("BOUND RANGE EXCEEDED"); }
-void ud(void){ general_exceptions_handler("INVALID OPCODE (UNDEFINED OPCODE)"); }
-void nm(void){ general_exceptions_handler("DEVICE NOT AVAILABLE (NO MATH COPROCESSOR)"); }
-void df(int32_t errorcode){ general_exceptions_handler("DOUBLE FAULT"); }
-void cso(void){ general_exceptions_handler("COPROCESSOR SEGMENT OVERRUN"); }
-void ts(int32_t errorcode){ general_exceptions_handler("INVALID TSS"); }
-void np(int32_t errorcode){ general_exceptions_handler("SEGMENT NOT PRESENT"); }
-void ss(int32_t errorcode){ general_exceptions_handler("STACK-SEGMENT FAULT"); }
-void gp(int32_t errorcode){ general_exceptions_handler("GENERAL PROTECTION"); }
-void pf(int32_t errorcode){
-    uint32_t addr;
-    asm volatile ("mov %%cr2, %0;" : "=r" (addr));
-    printf(terms, "PAGE FAULT: addr = %#x, error code = %#x\n", addr, errorcode);
-    while(1);
-}
-void mf(void){ general_exceptions_handler("X87 FPU FLOATING-POINT ERROR"); }
-void ac(int32_t errorcode){ general_exceptions_handler("ALIGNMENT CHECK"); }
-void mc(void){ general_exceptions_handler("MACHINE CHECK"); }
-void xf(void){ general_exceptions_handler("SIMD FLOATING-POINT EXCEPTION"); }
-void unreachable(void){ general_exceptions_handler("\x1b""30UNREACHABLE!!!\x1b""70"); }
-
-/* temp function just to see if the index at 0x80 can be set*/
-void syscall_temp(void){ printf(terms, "In syscall_temp\n"); }
-
 /* Function creates everything as interrupt gates as recommended by descriptor doc
  * "For simplicity,use interrupt gates for everything"
  * https://courses.engr.illinois.edu/ece391/sp2019/secure/references/descriptors.pdf
@@ -98,17 +50,13 @@ void idt_init(void){
 		if (i == SYSCALL_IDX) {
 			idt[i].dpl = 0x3;
 			idt[i].present = 1;
-			// Set to Trap Gate
-			/* idt[i].reserved3 = 0x1; */
-			/* idt[i].reserved2 = 0x1; */
-			/* idt[i].reserved1 = 0x1; */
 		} else {
 			// as instructed, the syscall privelege is set to 3
 			idt[i].dpl = 0x0;
 		}                        // all other priveleges are initialized to 0
 
 		// sets the Intel reserved exceptions from indices 20-31
-		if( (i > 19) && (i < 32) ){ SET_IDT_ENTRY(idt[i], &db ); }
+		if( (i > 19) && (i < 32) ){ SET_IDT_ENTRY(idt[i], &_db_isr ); }
 	}
 
 	SET_IDT_ENTRY(idt[0], &_de_isr );      // sets Divide by Zero exception

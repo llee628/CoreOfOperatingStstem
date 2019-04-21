@@ -43,27 +43,6 @@
 .globl _syscall_isr
 .globl sigreturn_linkage
 
-EXCEPTION_JMP_TAB:
-    .long de
-    .long db
-    .long nmi
-    .long bp
-    .long of
-    .long br
-    .long ud
-    .long nm
-    .long df
-    .long cso
-    .long ts
-    .long np
-    .long ss
-    .long gp
-    .long pf
-    .long mf
-    .long ac
-    .long mc
-    .long xf
-
 SYSCALL_JMP_TAB:
     .long syscall_halt
     .long syscall_execute
@@ -82,20 +61,20 @@ SYSCALL_JMP_TAB:
 PIC_ISR_jmp_tab:
     .long pit_isr           // 0     Programmable Interrupt Timer Interrupt
     .long kb_isr            // 1     Keyboard Interrupt
-    .long unreachable       // 2     Cascade (used internally by the two PICs. never raised)
-    .long db                // 3     COM2 (if enabled)
-    .long db                // 4     COM1 (if enabled)
-    .long db                // 5     LPT2 (if enabled)
-    .long db                // 6     Floppy Disk
-    .long db                // 7     LPT1 / Unreliable "spurious" interrupt (usually)
+    .long 0                 // 2     Cascade (used internally by the two PICs. never raised)
+    .long 0                 // 3     COM2 (if enabled)
+    .long 0                 // 4     COM1 (if enabled)
+    .long 0                 // 5     LPT2 (if enabled)
+    .long 0                 // 6     Floppy Disk
+    .long 0                 // 7     LPT1 / Unreliable "spurious" interrupt (usually)
     .long rtc_isr           // 8     CMOS real-time clock (if enabled)
-    .long db                // 9     Free for peripherals / legacy SCSI / NIC
-    .long db                // 10     Free for peripherals / SCSI / NIC
-    .long db                // 11     Free for peripherals / SCSI / NIC
-    .long db                // 12     PS2 Mouse
-    .long db                // 13     FPU / Coprocessor / Inter-processor
-    .long db                // 14     Primary ATA Hard Disk
-    .long db                // 15     Secondary ATA Hard Disk
+    .long 0                 // 9     Free for peripherals / legacy SCSI / NIC
+    .long 0                 // 10     Free for peripherals / SCSI / NIC
+    .long 0                 // 11     Free for peripherals / SCSI / NIC
+    .long 0                 // 12     PS2 Mouse
+    .long 0                 // 13     FPU / Coprocessor / Inter-processor
+    .long 0                 // 14     Primary ATA Hard Disk
+    .long 0                 // 15     Secondary ATA Hard Disk
 
 # Syscall
 _syscall_isr:

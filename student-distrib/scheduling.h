@@ -22,11 +22,7 @@
 
 #define PIT_IRQNUM         0
 
-
-
 void init_pit(void);
-
 void pit_isr(void);
-
 
 #endif
