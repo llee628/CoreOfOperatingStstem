@@ -136,47 +136,40 @@ void esc_funcs(uint8_t f, uint8_t *args, uint8_t arg_len, term_t *cur_term) {
 // Function to parse the escape sequence for `term_write'; returns 1 when the
 // literal character should be put on screen
 int8_t esc_parse(uint8_t c, term_t *cur_term) {
-    static esc_state_t state = IDLE;
-    // Buffer for each argument
-    static int8_t buf[4];
-    static uint8_t buf_len = 0;
-    // All the arguments
-    static uint8_t args[4];
-    static uint8_t arg_len = 0;
     // Unconditional reset; start a new sequence whenever an escape is
     // encountered, regardless of current progress
     if (c == 0x1b) {
-        state = A_ESCAPE;
+        cur_term->state = A_ESCAPE;
         return 0;
     }
-    if (state == A_ESCAPE && c == '[') {
-        state = A_BRACKET;
+    if (cur_term->state == A_ESCAPE && c == '[') {
+        cur_term->state = A_BRACKET;
         return 0;
     }
-    if (state == A_BRACKET) {
-        arg_len = 0;
-        buf_len = 0;
-        state = ARG_PARSE;
+    if (cur_term->state == A_BRACKET) {
+        cur_term->arg_len = 0;
+        cur_term->buf_len = 0;
+        cur_term->state = ARG_PARSE;
     }
 
-    if (state == ARG_PARSE) {
+    if (cur_term->state == ARG_PARSE) {
         if (isnum(c)) {
-            if (buf_len < 3) {
-                buf[buf_len++] = c;
+            if (cur_term->buf_len < 3) {
+                cur_term->buf[cur_term->buf_len++] = c;
             }
-            return 0;
-        } else if (c == ';') {
-            if (arg_len < 3) {
-                buf[buf_len] = 0;
-                args[arg_len++] = atoi(buf, 10);
-            }
-            buf_len = 0;
             return 0;
         } else {
-            esc_funcs(c, args, arg_len, cur_term);
-            state = IDLE;
-            buf_len = arg_len = 0;
-            return 0;
+            if (cur_term->arg_len < 3) {
+                cur_term->buf[cur_term->buf_len] = 0;
+                cur_term->args[cur_term->arg_len++] = atoi(cur_term->buf, 10);
+            }
+            cur_term->buf_len = 0;
+            if (c != ';') {
+                esc_funcs(c, cur_term->args, cur_term->arg_len, cur_term);
+                cur_term->state = IDLE;
+                cur_term->buf_len = cur_term->arg_len = 0;
+                return 0;
+            }
         }
     }
     return 1;

@@ -11,6 +11,14 @@
 
 #define VID_MEM_SIZE (2 * 80 * 25)
 
+typedef enum {
+    IDLE,
+    A_ESCAPE,
+    A_BRACKET,
+    ARG_PARSE,
+    PARTIAL_FINISH,
+} esc_state_t;
+
 typedef struct {
     char term_buf[TERM_BUF_SIZE_W_NL];
     uint8_t term_buf_count;
@@ -25,15 +33,15 @@ typedef struct {
     uint8_t term_noecho : 1;
     uint8_t term_canon : 1;
     uint8_t cur_pid;
-} term_t;
 
-typedef enum {
-    IDLE,
-    A_ESCAPE,
-    A_BRACKET,
-    ARG_PARSE,
-    PARTIAL_FINISH,
-} esc_state_t;
+    esc_state_t state;
+    // Buffer for each argument
+    int8_t buf[4];
+    uint8_t buf_len;
+    // All the arguments
+    uint8_t args[4];
+    uint8_t arg_len;
+} term_t;
 
 file_ops_table_t term_file_ops_table;
 term_t terms[TERM_NUM];
