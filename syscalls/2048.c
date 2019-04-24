@@ -303,6 +303,7 @@ void print_status (int score) {
 
 //INFO
 void print_info (int status) {
+    printf("\e[f\e[b");
     switch (status) {
         case 0: //normal
             printf ("\e[3;45p%s", "    Use your arrow key to play      ");
@@ -453,13 +454,16 @@ start:
             if (tile[i] != tile_bak[i])
                 changed = true;
 
-        if (changed)
+        if (changed) {
             place_tile (tile);
 
-        for (i=0;i<16;i++)
-            print_tile (tile[i], i);
+            for (i=0;i<16;i++) {
+                print_tile (tile[i], i);
+            }
 
-        print_status (score);
+            print_status (score);
+        }
+
     }
 
     print_info (2);

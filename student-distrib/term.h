@@ -43,7 +43,7 @@ typedef struct {
     uint8_t arg_len;
 } term_t;
 
-file_ops_table_t term_file_ops_table;
+file_ops_table_t stdin_file_ops_table, stdout_file_ops_table;
 term_t terms[TERM_NUM];
 uint8_t cur_term_ind;
 term_t *cur_term;

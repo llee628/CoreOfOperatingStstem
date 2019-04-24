@@ -7,10 +7,25 @@ term_t terms[TERM_NUM];
 uint8_t cur_term_ind = 0;
 static uint8_t* video_mem = (uint8_t *)VIDEO;
 
+int32_t term_read_invalid(int8_t* buf, uint32_t nbytes, FILE *file) {
+    return -1;
+}
+
+int32_t term_write_invalid(const int8_t* buf, uint32_t nbytes, FILE *file) {
+    return -1;
+}
+
 // File ops table
-file_ops_table_t term_file_ops_table = {
+file_ops_table_t stdin_file_ops_table = {
     .open = term_open,
     .read = term_read,
+    .write = term_write_invalid,
+    .close = term_close,
+};
+
+file_ops_table_t stdout_file_ops_table = {
+    .open = term_open,
+    .read = term_read_invalid,
     .write = term_write,
     .close = term_close,
 };
@@ -24,7 +39,7 @@ int32_t term_open(const int8_t *filename, FILE *file) {
 }
 
 int32_t term_close() {
-    return 0;
+    return -1;
 }
 
 int32_t term_read(int8_t* buf, uint32_t nbytes, FILE *file) {
@@ -150,6 +165,12 @@ int8_t esc_parse(uint8_t c, term_t *cur_term) {
         cur_term->arg_len = 0;
         cur_term->buf_len = 0;
         cur_term->state = ARG_PARSE;
+        if (!isnum(c)) {
+            esc_funcs(c, 0, 0, cur_term);
+            cur_term->state = IDLE;
+            cur_term->buf_len = cur_term->arg_len = 0;
+            return 0;
+        }
     }
 
     if (cur_term->state == ARG_PARSE) {
@@ -161,15 +182,16 @@ int8_t esc_parse(uint8_t c, term_t *cur_term) {
         } else {
             if (cur_term->arg_len < 3) {
                 cur_term->buf[cur_term->buf_len] = 0;
-                cur_term->args[cur_term->arg_len++] = atoi(cur_term->buf, 10);
+                cur_term->args[cur_term->arg_len] = atoi(cur_term->buf, 10);
+                cur_term->arg_len ++;
             }
             cur_term->buf_len = 0;
             if (c != ';') {
                 esc_funcs(c, cur_term->args, cur_term->arg_len, cur_term);
                 cur_term->state = IDLE;
                 cur_term->buf_len = cur_term->arg_len = 0;
-                return 0;
             }
+            return 0;
         }
     }
     return 1;
