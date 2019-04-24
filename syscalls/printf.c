@@ -36,6 +36,18 @@
 
 #include "printf.h"
 
+void _putchar(char c) {
+    asm volatile (
+        "mov $4, %%eax;"
+        "mov $1, %%ebx;"
+        "mov %0, %%ecx;"
+        "mov $1, %%edx;"
+        "int $0x80;"
+        :
+        : "g" (&c)
+        : "%eax", "%ebx", "%ecx", "%edx"
+    );
+}
 
 // define this globally (e.g. gcc -DPRINTF_INCLUDE_CONFIG_H ...) to include the
 // printf_config.h header file

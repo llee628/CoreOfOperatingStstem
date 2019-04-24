@@ -10,6 +10,10 @@ uint8_t pid_used[MAX_PROC_NUM] = {0};
 malloc_obj_t *malloc_objs = (malloc_obj_t *) MALLOC_HEAP_MAP_START;
 
 int32_t syscall_halt(uint8_t status) {
+    return _syscall_halt(status);
+}
+
+int32_t _syscall_halt(uint32_t status) {
     hw_context_t *context = (hw_context_t *) (((uint32_t *) &status) + 12);
     // Revert info from PCB
     PCB_t *task_pcb = get_cur_pcb();
@@ -46,12 +50,12 @@ int32_t syscall_halt(uint8_t status) {
     uint32_t prev_ebp = (uint32_t) parent_pcb->ebp;
     uint32_t prev_esp = (uint32_t) parent_pcb->esp;
     asm volatile (
-        "xorl %%ebx, %%ebx;"
-        "movb %0, %%bl;"
-        "movl %1, %%eax;"
-        "movl %2, %%ecx;"
-        "movl %%eax, %%ebp;"
-        "movl %%ecx, %%esp;"
+        "xor %%ebx, %%ebx;"
+        "mov %0, %%ebx;"
+        "mov %1, %%eax;"
+        "mov %2, %%ecx;"
+        "mov %%eax, %%ebp;"
+        "mov %%ecx, %%esp;"
         "jmp 1f;"
         :
         : "m" (status), "m" (prev_ebp), "m" (prev_esp)
@@ -77,7 +81,7 @@ int32_t _syscall_execute(const int8_t* command, int8_t term_ind) {
 
 syscall_execute__parse_args:;
     int i;
-    for (i = 0; isalnum(command[i]); i ++);
+    for (i = 0; command[i] >= ' '; i ++);
     const int8_t *args = command + i;
 
     // 1. Setup arguments
@@ -338,11 +342,7 @@ int32_t syscall_set_handler(int32_t signum, void* handler) {
         return -1;
     }
 
-    if (handler) {
-        signal_handlers[signum] = handler;
-    } else {
-        signal_handlers[signum] = def_signal_handlers[signum];
-    }
+    signal_handlers[signum] = handler;
     return 0;
 }
 
@@ -360,7 +360,7 @@ int32_t _syscall_sigreturn(hw_context_t *context) {
 
 uint8_t *syscall_malloc(uint32_t size) {
     uint8_t *obj_ptr = (uint8_t *) HEAP_START;
-    uint16_t i;
+    int16_t i;
     uint32_t total_empty_size = 0;
     PCB_t *task_pcb = get_cur_pcb();
     for (i = 0; i < task_pcb->malloc_obj_count; i ++) {
@@ -371,7 +371,7 @@ uint8_t *syscall_malloc(uint32_t size) {
                 if (task_pcb->malloc_obj_count == MALLOC_OBJ_NUM) {
                     return NULL;
                 }
-                uint16_t j;
+                int16_t j;
                 for (j = task_pcb->malloc_obj_count; j >= i; j --) {
                     malloc_objs[j + 1] = malloc_objs[j];
                 }

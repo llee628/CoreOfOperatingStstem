@@ -31,19 +31,6 @@ char getchar() {
     return c;
 }
 
-void _putchar(char c) {
-    asm volatile (
-        "mov $4, %%eax;"
-        "mov $1, %%ebx;"
-        "mov %0, %%ecx;"
-        "mov $1, %%edx;"
-        "int $0x80;"
-        :
-        : "g" (&c)
-        : "%eax", "%ebx", "%ecx", "%edx"
-    );
-}
-
 unsigned int random() {
     static unsigned int lfsr = 0xC0FFEE;
     unsigned int bit;
