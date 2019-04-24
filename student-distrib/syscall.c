@@ -27,7 +27,7 @@ int32_t _syscall_halt(uint32_t status) {
     }
 
     uint8_t i;
-    for (i = 2; i < MAX_PROC_NUM; i ++) {
+    for (i = 2; i < TASK_MAX_FILES; i ++) {
         if (task_pcb->open_files[i].flags.used) {
             task_pcb->open_files[i].file_ops->close(&task_pcb->open_files[i]);
         }
@@ -81,7 +81,7 @@ int32_t _syscall_execute(const int8_t* command, int8_t term_ind) {
 
 syscall_execute__parse_args:;
     int i;
-    for (i = 0; command[i] >= ' '; i ++);
+    for (i = 0; command[i] > ' '; i ++);
     const int8_t *args = command + i;
 
     // 1. Setup arguments
@@ -178,6 +178,10 @@ syscall_execute__parse_args:;
     tss.ss0 = KERNEL_DS;
 
     pid_used[pid] = 1;
+
+    for (i = 0; i < SIG_SIZE; i ++) {
+        task_pcb->signal_handlers[i] = NULL;
+    }
 
     // 6. Context switch
     asm volatile (
@@ -342,7 +346,8 @@ int32_t syscall_set_handler(int32_t signum, void* handler) {
         return -1;
     }
 
-    signal_handlers[signum] = handler;
+    PCB_t *task_pcb = get_cur_pcb();
+    task_pcb->signal_handlers[signum] = handler;
     return 0;
 }
 

@@ -26,10 +26,7 @@ typedef struct {
 
 #define SIG_FLAG(s) (1 << s)
 
-sighandler_t *signal_handlers[SIG_SIZE];
-
 void check_signals(hw_context_t *context);
 extern int sigreturn_linkage();
-void init_signals();
 
 #endif

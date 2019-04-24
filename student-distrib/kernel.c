@@ -108,7 +108,6 @@ void entry(unsigned long magic, unsigned long addr) {
     /* Init the File System */
     fs_init(bblock_addr);
     init_term();
-	init_signals();
     init_pit();
 
 	while (1) {

@@ -3,6 +3,7 @@
 
 #include "types.h"
 #include "page.h"
+#include "signals.h"
 
 #define BUF_SIZE 256
 // Maximum number of files open for each task
@@ -61,6 +62,7 @@ typedef struct PCB_s {
     uint8_t term_ind;
     // Total number of objects; unused objects are counted
     uint32_t malloc_obj_count;
+    sighandler_t *signal_handlers[SIG_SIZE];
 } PCB_t;
 
 
