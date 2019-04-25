@@ -10,11 +10,10 @@ uint8_t pid_used[MAX_PROC_NUM] = {0};
 malloc_obj_t *malloc_objs = (malloc_obj_t *) MALLOC_HEAP_MAP_START;
 
 int32_t syscall_halt(uint8_t status) {
-    return _syscall_halt(status);
+    return _syscall_halt(status, (hw_context_t *) (((uint32_t *) &status) + 3));
 }
 
-int32_t _syscall_halt(uint32_t status) {
-    hw_context_t *context = (hw_context_t *) (((uint32_t *) &status) + 12);
+int32_t _syscall_halt(uint32_t status, hw_context_t *context) {
     // Revert info from PCB
     PCB_t *task_pcb = get_cur_pcb();
     PCB_t *parent_pcb = task_pcb->parent;

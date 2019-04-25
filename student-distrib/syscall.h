@@ -26,7 +26,7 @@ typedef struct {
 } __attribute__((packed)) malloc_obj_t;
 
 int32_t syscall_halt(uint8_t status);
-int32_t _syscall_halt(uint32_t status);
+int32_t _syscall_halt(uint32_t status, hw_context_t *context);
 int32_t _syscall_execute(const int8_t* command, int8_t term_ind);
 int32_t syscall_execute(const int8_t *command);
 int32_t syscall_read(int32_t fd, void *buf, uint32_t nbytes);

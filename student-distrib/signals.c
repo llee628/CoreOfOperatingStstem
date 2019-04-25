@@ -35,7 +35,7 @@ void check_signals(hw_context_t *context) {
             }
 
             if (i <= 3) {
-                _syscall_halt(256);
+                _syscall_halt(256, context);
             }
             // Ignore others
         }
