@@ -7,9 +7,13 @@
 #define ADDRESS_SHIFT       12
 #define KERNEL_ADDR   0x400000
 #define VID_MEM_ADDR      0xB8
-#define USER_PAGE_START 0x08000000
+#define TASK_VIRT_PAGE_BEG 0x8000000
+#define TASK_VIRT_PAGE_END 0x8400000
+#define TASK_VIDMEM_START  0x8800000
 // 4 MB = 4 * 1024 * 1024
-#define USER_PAGE_INDEX (USER_PAGE_START >> (2 + 10 + 10))
+#define PAGE_TABLE_ADDR_SHIFT (2 + 10 + 10)
+#define USER_PAGE_INDEX (TASK_VIRT_PAGE_BEG >> PAGE_TABLE_ADDR_SHIFT)
+#define USER_VIDMEM_INDEX (TASK_VIDMEM_START >> PAGE_TABLE_ADDR_SHIFT)
 
 /* Structure for a page table entry */
 typedef struct __attribute__ ((packed)) PTE_t{
@@ -64,5 +68,6 @@ void init_page(void);
 
 PDE_t page_directory[MAX_ENTRIES];
 PTE_t vidmem_page_table[MAX_ENTRIES];
+PTE_t user_vidmem_page_table[MAX_ENTRIES];
 
 #endif

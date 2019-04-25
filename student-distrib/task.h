@@ -3,6 +3,7 @@
 
 #include "types.h"
 #include "page.h"
+#include "signals.h"
 
 #define BUF_SIZE 256
 // Maximum number of files open for each task
@@ -22,10 +23,6 @@
 #define KSTACK_TOP_MASK (~0x1FFF)
 
 #define MAX_PROC_NUM 32
-
-#define TASK_VIRT_PAGE_BEG 0x8000000
-#define TASK_VIRT_PAGE_END 0x8400000
-#define TASK_VIDMEM_START  (0x8400000 + (VID_MEM_ADDR << ADDRESS_SHIFT))
 
 typedef enum {
     TASK_FILE_REG,
@@ -58,10 +55,17 @@ typedef struct PCB_s {
     FILE open_files[TASK_MAX_FILES];
     struct PCB_s *parent;
     const int8_t *cmd_args;
-    uint8_t *prev_esp;
-    uint8_t *prev_ebp;
-    int8_t signal;
+    uint8_t *esp;
+    uint8_t *ebp;
+    int8_t signals;
     uint8_t pid;
+    uint8_t term_ind;
+    // Total number of objects; unused objects are counted
+    uint32_t malloc_obj_count;
+    sighandler_t *signal_handlers[SIG_SIZE];
 } PCB_t;
+
+
+extern int cur_proc_term[3];
 
 #endif /* ifndef _TASK_H_ */

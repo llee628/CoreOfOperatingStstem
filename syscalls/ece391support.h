@@ -8,6 +8,8 @@ extern int32_t ece391_strcmp(const uint8_t* s1, const uint8_t* s2);
 extern int32_t ece391_strncmp(const uint8_t* s1, const uint8_t* s2, uint32_t n);
 extern uint8_t *ece391_itoa(uint32_t value, uint8_t* buf, int32_t radix);
 extern uint8_t *ece391_strrev(uint8_t* s);
+extern void *ece391_calloc(uint32_t bytes);
+extern char *ece391_strdup(const char *str);
 
 #endif /* ECE391SUPPORT_H */
 

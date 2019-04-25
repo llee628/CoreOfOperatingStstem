@@ -224,4 +224,3 @@ ece391_close (int32_t fd)
     dir_fd = -1;
     return 0;
 }
-

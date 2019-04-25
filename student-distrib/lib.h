@@ -12,25 +12,14 @@
 #define NUM_ROWS    25
 #define DEF_ATTR      0x0F
 
-int32_t printf(int8_t *format, ...);
-void putc(uint8_t c);
-int32_t puts(int8_t *s);
 int8_t *itoa(uint32_t value, int8_t* buf, int32_t radix);
 int32_t atoi(const int8_t *buf, int32_t radix);
 int8_t *strrev(int8_t* s);
 uint32_t strlen(const int8_t* s);
-void scroll();
-void clear();
-void setpos(int x, int y);
-void setattr(uint8_t _attr);
-uint8_t getattr();
+
 int isalpha(uint8_t ch);
 int isnum(uint8_t ch);
 int isalnum(uint8_t ch);
-int getposx();
-int getposy();
-void back();
-void forward();
 
 void* memset(void* s, int32_t c, uint32_t n);
 void* memset_word(void* s, int32_t c, uint32_t n);

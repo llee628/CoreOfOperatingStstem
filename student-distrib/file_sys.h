@@ -55,8 +55,5 @@ int32_t read_dentry_by_index(uint32_t index, dentry_t* dentry);
 int32_t read_data(int32_t inode_num, uint32_t offset, int8_t* buf, uint32_t length);
 
 uint32_t fn_length(const int8_t* fname);
-int32_t modified_puts(int8_t* s, uint32_t length);
-int32_t get_type();
-int32_t get_size();
 
 #endif

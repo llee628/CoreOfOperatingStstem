@@ -102,3 +102,19 @@ uint8_t* ece391_strrev(uint8_t* s)
    return s;
 }
 
+void *ece391_calloc(uint32_t bytes) {
+    uint8_t *ptr = ece391_malloc(bytes);
+    uint32_t i;
+    for (i = 0; i < bytes; i ++) {
+        ptr[i] = 0;
+    }
+    return ptr;
+}
+
+char *ece391_strdup(const char *str) {
+    uint32_t len = ece391_strlen(str);
+    char *new_str = ece391_malloc(len + 1);
+    ece391_strcpy((uint8_t *) new_str, (const uint8_t *) str);
+    new_str[len] = 0;
+    return new_str;
+}

@@ -31,19 +31,6 @@ char getchar() {
     return c;
 }
 
-void _putchar(char c) {
-    asm volatile (
-        "mov $4, %%eax;"
-        "mov $1, %%ebx;"
-        "mov %0, %%ecx;"
-        "mov $1, %%edx;"
-        "int $0x80;"
-        :
-        : "g" (&c)
-        : "%eax", "%ebx", "%ecx", "%edx"
-    );
-}
-
 unsigned int random() {
     static unsigned int lfsr = 0xC0FFEE;
     unsigned int bit;
@@ -60,17 +47,17 @@ void print_border () {
     char horizontal[44] = "-------------------------------------------";
     //Print horizontally
     for (r=1;r<4;r++)
-        printf ("\e[%d;%d;p%s", r * 6, 1, horizontal);
+        printf ("\e[%d;%dp%s", r * 6, 1, horizontal);
 
     //Print vertically
     for (c=1;c<5;c++)
         for (r=1;r<24;r++)
-            printf ("\e[%d;%d;p|", r, 11 * c);
+            printf ("\e[%d;%dp|", r, 11 * c);
 
     //Print dot
     for (c=1;c<5;c++)
         for (r=1;r<4;r++)
-            printf ("\e[%d;%d;p%c", r * 6, c * 11, '+');
+            printf ("\e[%d;%dp%c", r * 6, c * 11, '+');
 }
 
 void print_tile (int num, int tile_num) {
@@ -80,62 +67,62 @@ void print_tile (int num, int tile_num) {
 
     switch (num) {
         case 2:
-            color = "\e[1;b";
+            color = "\e[1b";
             before = "    ";
             after = "     ";
             break;
         case 4:
-            color = "\e[2;b";
+            color = "\e[2b";
             before = "    ";
             after = "     ";
             break;
         case 8:
-            color = "\e[3;b";
+            color = "\e[3b";
             before = "    ";
             after = "     ";
             break;
         case 16:
-            color = "\e[4;b";
+            color = "\e[4b";
             before = "    ";
             after = "    ";
             break;
         case 32:
-            color = "\e[5;b";
+            color = "\e[5b";
             before = "    ";
             after = "    ";
             break;
         case 64:
-            color = "\e[6;b";
+            color = "\e[6b";
             before = "    ";
             after = "    ";
             break;
         case 128:
-            color = "\e[7;b";
+            color = "\e[7b";
             before = "   ";
             after = "    ";
             break;
         case 256:
-            color = "\e[8;b";
+            color = "\e[8b";
             before = "   ";
             after = "    ";
             break;
         case 512:
-            color = "\e[9;b";
+            color = "\e[9b";
             before = "   ";
             after = "    ";
             break;
         case 1024:
-            color = "\e[10;b";
+            color = "\e[10b";
             before = "   ";
             after = "   ";
             break;
         case 2048:
-            color = "\e[11;b";
+            color = "\e[11b";
             before = "   ";
             after = "   ";
             break;
         case 4096:
-            color = "\e[12;b";
+            color = "\e[12b";
             before = "   ";
             after = "   ";
             break;
@@ -149,19 +136,19 @@ void print_tile (int num, int tile_num) {
     p_x = (col - 1) * 11 + 1;
     if (num == 0) {
         printf ("\e[f\e[b");
-        printf ("\e[%d;%d;p          ", p_y, p_x);
-        printf ("\e[%d;%d;p          ", p_y+1, p_x);
-        printf ("\e[%d;%d;p          ", p_y+2, p_x);
-        printf ("\e[%d;%d;p          ", p_y+3, p_x);
-        printf ("\e[%d;%d;p          ", p_y+4, p_x);
+        printf ("\e[%d;%dp          ", p_y, p_x);
+        printf ("\e[%d;%dp          ", p_y+1, p_x);
+        printf ("\e[%d;%dp          ", p_y+2, p_x);
+        printf ("\e[%d;%dp          ", p_y+3, p_x);
+        printf ("\e[%d;%dp          ", p_y+4, p_x);
         printf ("\e[f\e[b");
     } else {
         printf ("%s", color);
-        printf ("\e[%d;%d;p          ", p_y, p_x);
-        printf ("\e[%d;%d;p          ", p_y+1, p_x);
-        printf ("\e[%d;%d;p%s%d%s", p_y+2, p_x, before, num, after);
-        printf ("\e[%d;%d;p          ", p_y+3, p_x);
-        printf ("\e[%d;%d;p          ", p_y+4, p_x);
+        printf ("\e[%d;%dp          ", p_y, p_x);
+        printf ("\e[%d;%dp          ", p_y+1, p_x);
+        printf ("\e[%d;%dp%s%d%s", p_y+2, p_x, before, num, after);
+        printf ("\e[%d;%dp          ", p_y+3, p_x);
+        printf ("\e[%d;%dp          ", p_y+4, p_x);
         printf ("\e[f\e[b");
     }
 }
@@ -308,67 +295,68 @@ void place_tile (int tile[16]) {
 }
 
 void print_status (int score) {
-    printf ("\e[24;1;p");
-    printf ("\e[0;f\e[15;b");
+    printf ("\e[24;1p");
+    printf ("\e[0;f\e[15b");
     printf ("%79s\r%70d\r%60s\r%s", "          ", score, "YOUR SCORE: ", "-- THE 2048 GAME --");
-    printf ("\e[24;80;p\e[f\e[b");
+    printf ("\e[24;80p\e[f\e[b");
 }
 
 //INFO
 void print_info (int status) {
+    printf("\e[f\e[b");
     switch (status) {
         case 0: //normal
-            printf ("\e[3;45;p%s", "    Use your arrow key to play      ");
-            printf ("\e[4;45;p%s", "                                    ");
-            printf ("\e[5;45;p%s", "               _____                ");
-            printf ("\e[6;45;p%s", "              |     |               ");
-            printf ("\e[7;45;p%s", "              |  ^  |               ");
-            printf ("\e[8;45;p%s", "              |  |  |               ");
-            printf ("\e[9;45;p%s", "        -------------------         ");
-            printf("\e[10;45;p%s", "        |     |     |     |         ");
-            printf("\e[11;45;p%s", "        |  <- |  |  | ->  |         ");
-            printf("\e[12;45;p%s", "        |     |  v  |     |         ");
-            printf("\e[13;45;p%s", "        -------------------         ");
-            printf("\e[14;45;p%s", "       Or W, S, A, D instead        ");
+            printf ("\e[3;45p%s", "    Use your arrow key to play      ");
+            printf ("\e[4;45p%s", "                                    ");
+            printf ("\e[5;45p%s", "               _____                ");
+            printf ("\e[6;45p%s", "              |     |               ");
+            printf ("\e[7;45p%s", "              |  ^  |               ");
+            printf ("\e[8;45p%s", "              |  |  |               ");
+            printf ("\e[9;45p%s", "        -------------------         ");
+            printf("\e[10;45p%s", "        |     |     |     |         ");
+            printf("\e[11;45p%s", "        |  <- |  |  | ->  |         ");
+            printf("\e[12;45p%s", "        |     |  v  |     |         ");
+            printf("\e[13;45p%s", "        -------------------         ");
+            printf("\e[14;45p%s", "       Or W, S, A, D instead        ");
             break;
         case 1: //win
-            printf ("\e[3;45;p%s", "                                    ");
-            printf ("\e[4;45;p%s", "                                    ");
-            printf ("\e[5;45;p%s", "                                    ");
-            printf ("\e[6;45;p%s", "                                    ");
-            printf ("\e[7;45;p%s", "                                    ");
-            printf ("\e[8;45;p%s", "                                    ");
-            printf ("\e[9;45;p%s", "                                    ");
-            printf("\e[10;45;p%s", "                                    ");
-            printf("\e[11;45;p%s", "                                    ");
+            printf ("\e[3;45p%s", "                                    ");
+            printf ("\e[4;45p%s", "                                    ");
+            printf ("\e[5;45p%s", "                                    ");
+            printf ("\e[6;45p%s", "                                    ");
+            printf ("\e[7;45p%s", "                                    ");
+            printf ("\e[8;45p%s", "                                    ");
+            printf ("\e[9;45p%s", "                                    ");
+            printf("\e[10;45p%s", "                                    ");
+            printf("\e[11;45p%s", "                                    ");
             printf("\e[4f");;
-            printf("\e[12;45;p%s", "              HURRAY!!!             ");
+            printf("\e[12;45p%s", "              HURRAY!!!             ");
             printf("\e[5f");;
-            printf("\e[13;45;p%s", "         You reached 2048!!         ");
+            printf("\e[13;45p%s", "         You reached 2048!!         ");
             printf("\e[f\e[b");
-            printf("\e[14;45;p%s", "          Move to continue          ");
+            printf("\e[14;45p%s", "          Move to continue          ");
             break;
         case 2: //lose
-            printf ("\e[3;45;p%s", "                                    ");
-            printf ("\e[4;45;p%s", "                                    ");
-            printf ("\e[5;45;p%s", "                                    ");
-            printf ("\e[6;45;p%s", "                                    ");
-            printf ("\e[7;45;p%s", "                                    ");
-            printf ("\e[8;45;p%s", "                                    ");
-            printf ("\e[9;45;p%s", "                                    ");
-            printf("\e[10;45;p%s", "                                    ");
-            printf("\e[11;45;p%s", "                                    ");
-            printf("\e[12;45;p%s", "                                    ");
+            printf ("\e[3;45p%s", "                                    ");
+            printf ("\e[4;45p%s", "                                    ");
+            printf ("\e[5;45p%s", "                                    ");
+            printf ("\e[6;45p%s", "                                    ");
+            printf ("\e[7;45p%s", "                                    ");
+            printf ("\e[8;45p%s", "                                    ");
+            printf ("\e[9;45p%s", "                                    ");
+            printf("\e[10;45p%s", "                                    ");
+            printf("\e[11;45p%s", "                                    ");
+            printf("\e[12;45p%s", "                                    ");
             printf("\e[1f");;
-            printf("\e[13;45;p%s", "               OH NO!!              ");
+            printf("\e[13;45p%s", "               OH NO!!              ");
             printf("\e[f\e[b");
-            printf("\e[14;45;p%s", "             You lose!!!            ");
+            printf("\e[14;45p%s", "             You lose!!!            ");
             break;
         default:
             break;
     }
-    printf ("\e[20;45;p%s", "        Press 'r' to retry");
-    printf ("\e[21;45;p%s", "              'q' to quit");
+    printf ("\e[20;45p%s", "        Press 'r' to retry");
+    printf ("\e[21;45p%s", "              'q' to quit");
 }
 
 bool check_end (int tile[16]) {
@@ -408,11 +396,9 @@ int main () {
     int tile[16];
     int tile_bak[16];
 
-    printf ("\e[e");            //store cursor position
-    printf ("\e[c");           //clear screen
+    printf ("\e[e\e[c");    // Store cursor position; Clear screen
     print_border ();
-    printf("\e[1;s\e[2;s");   // Set to canonical mode and no echo
-    /* struct termios saved_state = set_non_canonical (); */
+    printf("\e[1s\e[2s");   // Set to canonical mode and no echo
 start:
     //tile initialization
     for (i=0;i<16;i++)
@@ -468,13 +454,16 @@ start:
             if (tile[i] != tile_bak[i])
                 changed = true;
 
-        if (changed)
+        if (changed) {
             place_tile (tile);
 
-        for (i=0;i<16;i++)
-            print_tile (tile[i], i);
+            for (i=0;i<16;i++) {
+                print_tile (tile[i], i);
+            }
 
-        print_status (score);
+            print_status (score);
+        }
+
     }
 
     print_info (2);
@@ -491,7 +480,7 @@ start:
 
 end:
     //exit
-    printf("\e[1;S\e[2;S");   // Reset terminal
-    printf ("\e[r\n");          //restore cursor position
+    printf("\e[2S\e[1S");   // Reset terminal
+    printf ("\e[c\e[r\n");
     return 0;
 }
