@@ -24,8 +24,8 @@ file_ops_table_t rtc_file_ops_table = {
  * can keep track of is limited by `MAX_PROC_NUM`.
  *
  * Before using RTC, the system must call init_rtc() to initialize.
- * 
- * Every opened RTC descriptor should be closed after used, this is essential 
+ *
+ * Every opened RTC descriptor should be closed after used, this is essential
  * since the system's RTC frequency is determined by the maximum frequency among all
  * opened RTC descriptors, not doing this would possiblely introduce enormous overhead
  * to the system.
@@ -34,14 +34,14 @@ file_ops_table_t rtc_file_ops_table = {
 /*
  * There are two global staitc variables which can be used as a refernece to system freq
  * `sys_freq` and `sys_freq_pow`.
- * `sys_rtc_freq` is 2 to the power of `sys_freq_pow`. 
+ * `sys_rtc_freq` is 2 to the power of `sys_freq_pow`.
  * Be aware that always use `rtc_set_pi_freq()` to change the systems RTC freq.
  *
  * In order to vertualize the RTC, we must keep track of the user's frequency and
  * systems frequency seperately. By treating RTC is a file, we utilize the existing
  * fields in a `FILE` type varibale to store multiple infos.
  * We split FILE.inode into 3 parts, which represent `ratio`, `usr_freq`.
- * `usr_freq` is the user is frequency. 
+ * `usr_freq` is the user is frequency.
  * `ratio`    is defined as (sys_freq_pow - user_freq),
  * Be aware that `usr_freq`, and `ratio` are based on the power of 2.
  * namely, number 5 in `usr_freq` represent 2^5=32 Hz.
@@ -70,7 +70,7 @@ file_ops_table_t rtc_file_ops_table = {
  *	Abbreviation:
  *		s_freq: system RTC frequency
  *		u_freq: user RTC frequency
- * By ensuring s_freq to be the maximum number among all u_freq s, 
+ * By ensuring s_freq to be the maximum number among all u_freq s,
  * the s_freq is always being a multiple of u_freq.
  *
  * Keeping the ratio between s_freq and u_freq in FILE.inode has 2 reasons.
@@ -89,14 +89,14 @@ file_ops_table_t rtc_file_ops_table = {
 
 #define set_by_msk( dst, msk, src ) ( (dst) = ((dst)&(~msk)) | ((msk)&(src)) )
 
-// macro function to use 
+// macro function to use
 #define set_rtc_freq_field(inode, freq) ( set_by_msk( (inode), RTC_FREQ_MSK, ((freq)<<RTC_FREQ_SHIFT)) )
 #define set_rtc_ratio_field(inode, ratio) ( set_by_msk( (inode), RTC_RATIO_MSK, ((ratio)<<RTC_RATIO_SHIFT)) )
 
-#define get_rtc_freq(inode) ( (inode & RTC_FREQ_MSK) >> RTC_FREQ_SHIFT ) 
-#define get_rtc_ratio(inode) ( (inode & RTC_RATIO_MSK) >> RTC_RATIO_SHIFT ) 
+#define get_rtc_freq(inode) ( (inode & RTC_FREQ_MSK) >> RTC_FREQ_SHIFT )
+#define get_rtc_ratio(inode) ( (inode & RTC_RATIO_MSK) >> RTC_RATIO_SHIFT )
 
-#define calc_ratio(sys_freq_pow, inode)  ( (sys_freq_pow) - get_rtc_freq( (inode) )) 
+#define calc_ratio(sys_freq_pow, inode)  ( (sys_freq_pow) - get_rtc_freq( (inode) ))
 
 #define RTC_COUNTER_DEST RTC_SYS_MAX_FREQ
 // represent the RTC frequency, These variables should only be set by rtc_set_pi_freq().
@@ -105,7 +105,7 @@ static int32_t sys_freq_pow;
 
 /* init_rtc
  *	Descrption:	init system RTC.
- * 	
+ *
  *	Arg: none
  * 	RETURN:
  * 	none
@@ -171,7 +171,7 @@ int32_t rtc_set_pi_freq(int32_t freq){
 	pow = tmp;
 	rtc_rate_val = 16 - tmp; // 8192 is the 2 to the power of 16.
 
-	// set frequency	
+	// set frequency
 	cli();
 	sys_freq_pow=pow;
 	sys_freq = 1<<sys_freq_pow;
@@ -180,7 +180,7 @@ int32_t rtc_set_pi_freq(int32_t freq){
 	outb(RTC_FREQ_SELECT, RTC_ADDR_PORT);	// reset index to A
 	outb((prev & 0xF0) | (rtc_rate_val&0xF), RTC_DATA_PORT);        //write only our rate to A. Note, rate is the bottom 4 bits.
 	sti();
-	/* cur_sys_int_freq = rtc_rate_val; */ 
+	/* cur_sys_int_freq = rtc_rate_val; */
 
 	// check and update all rtc field
 	int i=0;
@@ -200,7 +200,7 @@ int32_t rtc_set_pi_freq(int32_t freq){
 
 /* rtc_write
  *	Descrption:	Set the RTC Hardware periodic interrupt frequency
- * 	
+ *
  *	Arg: freq: must be a power of 2 and inside the range of [2,8192]
  *		isSys: if the caller is system (system can reach 8192Hz, however user can
  * 			only reach 1024hz)
@@ -237,7 +237,7 @@ int32_t rtc_write(const int8_t *buf, uint32_t length, FILE *file){
 
 /* rtc_isr
  *	Descrption:	system RTC interrupt handler,
- * 	
+ *
  *	Arg: none
  * 	RETURN: none
   */
@@ -287,7 +287,7 @@ int32_t rtc_open(const int8_t *filename, FILE *file){
 
 	int tmp;
 	int32_t usr_freq;
-	
+
 	// `pos' as the counter, which count toward 0.
     file->pos = 0;
 

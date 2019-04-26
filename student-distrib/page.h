@@ -4,9 +4,13 @@
 #include "types.h"
 
 #define MAX_ENTRIES       1024
+#define PAGE_SIZE         4096
 #define ADDRESS_SHIFT       12
 #define KERNEL_ADDR   0x400000
 #define VID_MEM_ADDR      0xB8
+#define BACKGROUND_1      0xB9
+#define BACKGROUND_2      0xBA
+#define BACKGROUND_3      0xBB
 #define TASK_VIRT_PAGE_BEG 0x8000000
 #define TASK_VIRT_PAGE_END 0x8400000
 #define TASK_VIDMEM_START  0x8800000

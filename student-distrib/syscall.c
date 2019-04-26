@@ -332,12 +332,12 @@ int32_t syscall_vidmap(uint8_t** screen_start) {
         return -1;
     }
 
-    PCB_t *task_pcb = get_cur_pcb();
-    if (task_pcb->term_ind == cur_term_ind) {
+    /*PCB_t *task_pcb = get_cur_pcb();
+    if (task_pcb->term_ind == cur_term_ind) {*/
         *screen_start = (uint8_t *) TASK_VIDMEM_START;
-    } else {
+    /*} else {
         *screen_start = terms[(int) task_pcb->term_ind].video_mem;
-    }
+    }*/
     return (int32_t) *screen_start;
 }
 

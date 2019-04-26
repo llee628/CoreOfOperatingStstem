@@ -47,7 +47,7 @@ void init_page(void){
     for(i = 0; i < MAX_ENTRIES; i++){
       /* if the current mapping is to the Video memory
       * then mark present, else mark it unpresent */
-      if(i == VID_MEM_ADDR){
+      if(i == VID_MEM_ADDR || i == BACKGROUND_1 || i == BACKGROUND_2 || i == BACKGROUND_3){
         vidmem_page_table[i].present = 0x1;
         vidmem_page_table[i].user_super = 0x1;
       }

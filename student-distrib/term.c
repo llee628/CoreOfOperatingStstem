@@ -2,10 +2,14 @@
 #include "kb.h"
 #include "lib.h"
 #include "syscall.h"
+#include "page.h"
 
 term_t terms[TERM_NUM];
 uint8_t cur_term_ind = 0;
 static uint8_t* video_mem = (uint8_t *)VIDEO;
+static uint8_t* back_1 = (uint8_t*)0xB9000;
+static uint8_t* back_2 = (uint8_t*)0xBA000;
+static uint8_t* back_3 = (uint8_t*)0xBB000;
 
 int32_t term_read_invalid(int8_t* buf, uint32_t nbytes, FILE *file) {
     return -1;
@@ -216,6 +220,7 @@ void switch_term(uint8_t ind) {
     }
 
     // Save old terminal
+    cli();
     memcpy(cur_term->video_buffer, video_mem, VID_MEM_SIZE);
     cur_term->video_mem = cur_term->video_buffer;
 
@@ -225,6 +230,7 @@ void switch_term(uint8_t ind) {
     cur_term->video_mem = video_mem;
     setpos(cur_term->cur_x, cur_term->cur_y, cur_term);
     memcpy(video_mem, cur_term->video_buffer, VID_MEM_SIZE);
+    sti();
 }
 
 void term_key_handler(key_t key) {
@@ -426,7 +432,11 @@ void init_term() {
     cli();
     outb(0x0A, 0x3D4); outb(0x00, 0x3D5);   // Enable cursor; cursor scanline start at 0
     outb(0x0B, 0x3D4); outb(0x0F, 0x3D5);   // No cursor skew; cursor scanline ends at 15 => blocky cursors
-    
+
+    terms[0].video_buffer = back_1;
+    terms[1].video_buffer = back_2;
+    terms[2].video_buffer = back_3;
+
     terms[0].video_mem = video_mem;
     terms[1].video_mem = terms[1].video_buffer;
     terms[2].video_mem = terms[2].video_buffer;
