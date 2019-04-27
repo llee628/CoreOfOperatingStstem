@@ -24,7 +24,6 @@ void init_pit(){
 
 void pit_isr(){
     static uint8_t cur_proc_ind = 0;
-
     /* Send an eoi first as always */
     send_eoi(PIT_IRQNUM);
 
@@ -40,18 +39,26 @@ void pit_isr(){
         _syscall_execute("shell", cur_proc_ind);
     }
     else{
-      next_pid = terms[cur_proc_ind].cur_pid;
+        next_pid = terms[cur_proc_ind].cur_pid;
     }
 
     /* Return if there is no other process to schedule */
-    if(cur_proc->pid == next_pid)
+    if(cur_proc->pid == next_pid){
         return;
+    }
 
     PCB_t* next_proc = (PCB_t *) TASK_KSTACK_TOP(next_pid);
 
     /* Setup next process's paging */
     page_directory[USER_PAGE_INDEX].page_PDE.page_addr = TASK_PAGE_INDEX(next_pid);
+    if(next_proc->term_ind != cur_term_ind){
+        user_vidmem_page_table[0].page_addr = BACKGROUND_1 + next_proc->term_ind;
+    }
+    else{
+        user_vidmem_page_table[0].page_addr = VID_MEM_ADDR;
+    }
     tss.esp0 = TASK_KSTACK_BOT(next_pid);
+    tss.ss0 = KERNEL_DS;
     /* Flush TLB */
     asm volatile(
         " movl %0, %%cr3; "

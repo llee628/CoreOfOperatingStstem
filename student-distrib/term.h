@@ -29,7 +29,7 @@ typedef struct {
     uint8_t attr;
 
     uint8_t *video_mem;
-    uint8_t video_buffer[VID_MEM_SIZE];
+    uint8_t* video_buffer;
     uint8_t term_noecho : 1;
     uint8_t term_canon : 1;
     uint8_t cur_pid;
