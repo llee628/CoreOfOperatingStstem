@@ -7,7 +7,7 @@
 void init_pit(){
 
     // Set interrupt handler
-    SET_IDT_ENTRY(idt[PIT_INT], _pti_isr);
+    SET_IDT_ENTRY(idt[PIT_INT], _pit_isr);
     idt[PIT_INT].present = 1;
 
     // Calculate 30 millisecond timer interrupt

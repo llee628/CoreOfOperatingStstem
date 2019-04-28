@@ -279,14 +279,14 @@ void rtc_isr(void) {
 	uint8_t i;
 	int count ;
 	for (i = 0; i < MAX_PROC_NUM; i ++) {
+		time_elasped[i] += sys_counter_step;
+		if (time_elasped[i] >= SYS_COUNTER_MAX){
+			time_elasped[i] = 0;
+			PCB_t *task_pcb = get_cur_pcb();
+			task_pcb->signals |= SIG_FLAG(SIG_ALARM);
+		}
 		FILE *cur_file = rtc_files[i];
 		if (cur_file) {
-			time_elasped[i] += sys_counter_step;
-			if(time_elasped[i] >= SYS_COUNTER_MAX){
-				time_elasped[i] = 0;
-				// Send Signal to program
-				//
-			}
 			cur_file->pos -= 1;
 			if (cur_file->pos <= 0) {
 				cur_file->pos = 1<<get_rtc_ratio(cur_file->inode);

@@ -41,7 +41,7 @@ extern int _mc_isr(void);
 extern int _xf_isr(void);
 
 // External interrupt asm handlers
-extern int _pti_isr(void);
+extern int _pit_isr(void);
 extern int _kb_isr(void);
 extern int _cas_isr(void);
 extern int _com2_isr(void);

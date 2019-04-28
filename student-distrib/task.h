@@ -22,7 +22,7 @@
 #define TASK_USTACK_BOT(c) (0x800000 + 0x40000 * (c + 1))
 #define KSTACK_TOP_MASK (~0x1FFF)
 
-#define MAX_PROC_NUM 32
+#define MAX_PROC_NUM 10
 
 typedef enum {
     TASK_FILE_REG,

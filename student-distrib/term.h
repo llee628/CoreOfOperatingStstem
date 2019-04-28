@@ -27,6 +27,7 @@ typedef struct {
     int8_t cur_x, cur_y;
     int8_t cur_x_store, cur_y_store;
     uint8_t attr;
+    uint8_t reading;
 
     uint8_t *video_mem;
     uint8_t* video_buffer;
