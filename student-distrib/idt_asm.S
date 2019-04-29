@@ -23,7 +23,7 @@
 .globl _mc_isr
 .globl _xf_isr
 
-.globl _pti_isr
+.globl _pit_isr
 .globl _kb_isr
 .globl _cas_isr
 .globl _com2_isr
@@ -178,7 +178,7 @@ common_isr__return:
 
 
 
-_pti_isr:    // 0     Programmable Interrupt Timer Interrupt
+_pit_isr:    // 0     Programmable Interrupt Timer Interrupt
     push $0
     push $-1
     jmp common_isr

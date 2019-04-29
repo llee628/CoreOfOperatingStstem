@@ -128,7 +128,16 @@ file_ops_table_t rtc_file_ops_table = {
 
 //#define calc_ratio(sys_freq_pow, inode)  ( (sys_freq_pow) - get_rtc_freq( (inode) ))
 
-#define RTC_COUNTER_DEST RTC_SYS_MAX_FREQ
+// Signal
+// We want to send periodic signals to program every 10 second.
+// Since the system RTC freq might change during execution, and the max freq is 8192 Hz.
+// So we make these counter count up to 81920, and take different step under different freq.
+// The equation for step is (8192/sys freq)
+#define SYS_COUNTER_MAX (RTC_SYS_MAX_FREQ*10)
+int32_t time_elasped[MAX_PROC_NUM] = {0};
+int32_t sys_counter_step;
+
+
 // represent the RTC frequency, These variables should only be set by rtc_set_pi_freq().
 static int32_t sys_freq;
 static int32_t sys_freq_pow;
@@ -162,8 +171,10 @@ void init_rtc(void) {
 	outb(RTC_FREQ_SELECT, RTC_ADDR_PORT);	// reset index to A
 	outb((prev & 0xF0) | 3, RTC_DATA_PORT);	//write only our rate to A. Note, rate is the bottom 4 bits.
 
+	// default system frequency: 2Hz
 	sys_freq_pow=1;
 	sys_freq = 1<<sys_freq_pow;
+	sys_counter_step = RTC_SYS_MAX_FREQ/2;
 
 	sti();
 }
@@ -224,6 +235,8 @@ int32_t rtc_set_pi_freq(int32_t freq){
 	cli();
 	sys_freq_pow=freq_pow;
 	sys_freq = 1<<sys_freq_pow;
+	sys_counter_step = RTC_SYS_MAX_FREQ>>sys_freq_pow;
+
 	outb(RTC_FREQ_SELECT, RTC_ADDR_PORT);	// set index to register A, disable NMI
 	prev = inb(RTC_DATA_PORT);				// get initial value of register A
 	outb(RTC_FREQ_SELECT, RTC_ADDR_PORT);	// reset index to A
@@ -309,6 +322,12 @@ int32_t rtc_read(){
 	uint8_t i;
 	int count ;
 	for (i = 0; i < MAX_PROC_NUM; i ++) {
+		time_elasped[i] += sys_counter_step;
+		if (time_elasped[i] >= SYS_COUNTER_MAX){
+			time_elasped[i] = 0;
+			PCB_t *task_pcb = get_cur_pcb();
+			task_pcb->signals |= SIG_FLAG(SIG_ALARM);
+		}
 		FILE *cur_file = rtc_files[i];
 		if (cur_file) {
 			cur_file->pos -= 1;
@@ -318,7 +337,7 @@ int32_t rtc_read(){
 				if(count >32){
 					// The system is overwhelmed in this situation
 				 	count = 32;
-				 } 
+				}
 				set_rtc_count_field(cur_file->inode, count );
 			}
 		}
@@ -375,6 +394,7 @@ int32_t rtc_open(const int8_t *filename, FILE *file){
 	for (i = 0; i < MAX_PROC_NUM; i ++) {
 		if (!rtc_files[i]) {
 			rtc_files[i] = file;
+			time_elasped[i] = 0;
 			return 0;
 		}
 	}

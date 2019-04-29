@@ -4,10 +4,16 @@
 #include "x86_desc.h"
 #include "term.h"
 
+/* void init_pit;
+ * Inputs: None
+ * Return Value: None
+ * Function: Initializes interrupt support for the PIT and sets the
+ * timer interval to 30ms
+ */
 void init_pit(){
 
     // Set interrupt handler
-    SET_IDT_ENTRY(idt[PIT_INT], _pti_isr);
+    SET_IDT_ENTRY(idt[PIT_INT], _pit_isr);
     idt[PIT_INT].present = 1;
 
     // Calculate 30 millisecond timer interrupt
@@ -22,6 +28,12 @@ void init_pit(){
     enable_irq(PIT_IRQNUM);
 }
 
+/* void pit_isr;
+ * Inputs: None
+ * Return Value: None
+ * Function: Interrupt handler for PIT, schedules processes to run
+ * in a round robin fashion
+ */
 void pit_isr(){
     static uint8_t cur_proc_ind = 0;
     /* Send an eoi first as always */
@@ -34,7 +46,7 @@ void pit_isr(){
     if(!cur_proc)
         return;
 
-    cur_proc_ind = (cur_proc_ind + 1) % 3;
+    cur_proc_ind = (cur_proc_ind + 1) % TERM_NUM;
     if (!terms[cur_proc_ind].cur_pid) {
         _syscall_execute("shell", cur_proc_ind);
     }

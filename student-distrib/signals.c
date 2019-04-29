@@ -9,10 +9,10 @@ void check_signals(hw_context_t *context) {
         return;
     }
 
-    /* // Only deliver signal when return to user */
-    /* if (context->cs != USER_CS) { */
-    /*     return; */
-    /* } */
+    // Only deliver signal when return to user
+    if (context->cs != USER_CS) {
+        return;
+    }
 
     uint8_t i;
     for (i = 0; i < SIG_SIZE; i ++) {
@@ -21,7 +21,7 @@ void check_signals(hw_context_t *context) {
             task_pcb->signals &= ~mask;
             if (task_pcb->signal_handlers[i]) {
                 uint32_t *user_esp = context->esp;
-                user_esp -= 17;
+                user_esp -= sizeof(hw_context_t) / sizeof(uint32_t);
                 hw_context_t *saved_context = (hw_context_t *) user_esp;
                 *saved_context = *context;
 
@@ -34,7 +34,7 @@ void check_signals(hw_context_t *context) {
                 return;
             }
 
-            if (i <= 3) {
+            if (i < 3) {
                 _syscall_halt(256, context);
             }
             // Ignore others

@@ -53,21 +53,25 @@ int32_t term_read(int8_t* buf, uint32_t nbytes, FILE *file) {
     PCB_t *task_pcb = get_cur_pcb();
     term_t *cur_term = &terms[task_pcb->term_ind];
     if (cur_term->term_canon) {
+        cur_term->reading = 1;
         sti();
         while (!cur_term->term_buf_count) {
             asm volatile ("hlt");
         }
         cli();
+        cur_term->reading = 0;
         memcpy(buf, cur_term->term_buf, 1);
         cur_term->term_curpos = 1;
         delch(cur_term);
         return 1;
     } else {
+        cur_term->reading = 1;
         sti();
         while (!cur_term->term_read_done) {
             asm volatile ("hlt");
         }
         cli();
+        cur_term->reading = 0;
         if (!cur_term->term_noecho) {
             putc('\n', cur_term);
         }
@@ -387,7 +391,7 @@ void term_key_handler(key_t key) {
 
 // Add a character to the line buf after the current cursor position
 void addch(uint8_t ch, term_t *cur_term) {
-    if (cur_term->term_buf_count < TERM_BUF_SIZE) {
+    if (cur_term->term_buf_count < TERM_BUF_SIZE && cur_term->reading) {
         int i;
         for (i = cur_term->term_buf_count; i > cur_term->term_curpos; i --) {
             cur_term->term_buf[i] = cur_term->term_buf[i - 1];
