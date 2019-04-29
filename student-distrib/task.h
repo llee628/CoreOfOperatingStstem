@@ -66,6 +66,4 @@ typedef struct PCB_s {
 } PCB_t;
 
 
-extern int cur_proc_term[3];
-
 #endif /* ifndef _TASK_H_ */
