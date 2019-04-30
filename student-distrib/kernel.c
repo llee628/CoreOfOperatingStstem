@@ -16,6 +16,7 @@
 #include "file_sys.h"
 #include "signals.h"
 #include "scheduling.h"
+#include "tuxctl.h"
 
 extern int32_t do_syscall(int32_t a, int32_t b, int32_t c, int32_t d);
 
@@ -108,6 +109,7 @@ void entry(unsigned long magic, unsigned long addr) {
     /* Init the File System */
     fs_init(bblock_addr);
     init_term();
+	init_tuxctl();
     init_pit();
 
 	while (1) {
