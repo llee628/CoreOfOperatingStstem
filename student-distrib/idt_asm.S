@@ -63,7 +63,7 @@ PIC_ISR_jmp_tab:
     .long kb_isr            // 1     Keyboard Interrupt
     .long 0                 // 2     Cascade (used internally by the two PICs. never raised)
     .long 0                 // 3     COM2 (if enabled)
-    .long 0                 // 4     COM1 (if enabled)
+    .long serial_isr        // 4     COM1 (if enabled)
     .long 0                 // 5     LPT2 (if enabled)
     .long 0                 // 6     Floppy Disk
     .long 0                 // 7     LPT1 / Unreliable "spurious" interrupt (usually)
